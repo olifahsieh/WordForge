@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WordForge — Review</title>
+  <link rel="stylesheet" href="./app.css">
+  <meta name="color-scheme" content="light dark">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div>
+        <p class="eyebrow">WordForge Study</p>
+        <h1>WordForge</h1>
+        <p class="subtitle">Daily vocabulary review for stronger recall.</p>
+      </div>
+      <div class="header-actions">
+        <button id="importBtn" class="btn btn-secondary">Import CSV</button>
+        <div class="stats-card">
+          <span class="stat-label">Today's Review</span>
+          <strong id="today-summary">0 words due</strong>
+        </div>
+      </div>
+    </div>
+  </header>
+  <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
+
+  <main class="container">
+    <section class="card-panel">
+      <div class="card" id="card" aria-live="polite" aria-label="Flashcard">
+        <div class="card-inner" id="cardInner">
+          <div class="card-face card-front">
+            <span class="card-state">Flashcard</span>
+            <h2 class="word" id="word">Loading…</h2>
+            <p class="phonetic" id="phonetic">/—/</p>
+          </div>
+          <div class="card-face card-back">
+            <span class="card-state">Translation</span>
+            <p class="translation" id="translation">Translation</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="prevBtn" class="btn btn-secondary">Previous</button>
+        <button id="flipBtn" class="btn btn-primary">Flip Card</button>
+        <button id="nextBtn" class="btn btn-secondary">Next</button>
+      </div>
+
+      <div class="review-actions">
+        <button data-rating="again" class="btn btn-ghost">Again</button>
+        <button data-rating="hard" class="btn btn-ghost">Hard</button>
+        <button data-rating="good" class="btn btn-ghost">Good</button>
+        <button data-rating="easy" class="btn btn-ghost">Easy</button>
+      </div>
+
+      <div class="footer-row">
+        <div class="progress-panel">
+          <div class="progress-label">Progress</div>
+          <div class="progress-bar" aria-hidden="true"><div id="progressFill" class="progress-fill"></div></div>
+        </div>
+        <div id="progressText" class="progress-text">0 / 0 reviewed</div>
+      </div>
+
+      <div id="reviewFeedback" class="review-feedback" role="status"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
