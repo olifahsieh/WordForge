@@ -1,0 +1,1 @@
+WordForge is a vocabulary learning application designed for IELTS learners. It combines flashcards, spaced repetition, pronunciation, dictionary lookup, and writing practice into a single learning workspace.
