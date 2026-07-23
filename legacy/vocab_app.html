@@ -1628,23 +1628,37 @@ Rules:
 
 let pendingLookupData = null;
 
-async function callDictAPI(word){
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system: DICT_PROMPT,
-      messages: [{ role: 'user', content: `Look up: ${word.trim()}` }]
-    })
-  });
-  if(!res.ok) throw new Error(`API error ${res.status}`);
-  const data = await res.json();
-  const text = data.content?.find(b=>b.type==='text')?.text || '';
-  // Strip any markdown fences just in case
-  const clean = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-  return JSON.parse(clean);
+async function callDictAPI(word) {
+  const query = encodeURIComponent(word.trim());
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
+  if (!res.ok) throw new Error('Not found');
+
+  const [entry] = await res.json();
+  if (!entry) throw new Error('Not found');
+
+  const phonetic = (entry.phonetics || []).find((p) => p.text && p.text.trim())?.text || entry.phonetic || '--';
+  const audioUrl = (entry.phonetics || []).find((p) => p.audio && p.audio.trim())?.audio || '';
+
+  const definitions = (entry.meanings || []).map((m) => ({
+    pos: m.partOfSpeech || 'definition',
+    defs: (m.definitions || []).slice(0, 3).map((d) => ({
+      def: d.definition || '',
+      ex: d.example || '',
+    })),
+  }));
+
+  const compactList = definitions
+    .map((d) => `${d.pos}. ${d.defs.map((x) => x.def).join('; ')}`)
+    .slice(0, 2)
+    .join(' | ');
+
+  return {
+    word: entry.word,
+    phonetic: phonetic,
+    audioUrl: audioUrl,
+    translation_compact: compactList || 'No definition found',
+    definitions: definitions,
+  };
 }
 
 async function lookupWord(){
@@ -1680,12 +1694,12 @@ function renderLookupResult(data){
   // Definitions
   const defs = document.getElementById('lr-definitions');
   defs.innerHTML = (data.definitions||[]).map(pos=>{
-    const items = (pos.meanings||[]).map((m,i)=>`
+    const items = (pos.defs||[]).map((m,i)=>`
       <div class="def-item">
         <span class="def-num">${i+1}</span>
         <div>
-          <div class="def-text"><strong style="color:var(--accent2)">${escHtml(m.zh)}</strong>　<span style="color:var(--muted);font-size:.82rem">${escHtml(m.en)}</span></div>
-          ${m.example?`<div class="def-example">${escHtml(m.example)}</div>`:''}
+          <div class="def-text"><strong style="color:var(--accent2)">${escHtml(m.def)}</strong></div>
+          ${m.ex?`<div class="def-example">${escHtml(m.ex)}</div>`:''}
         </div>
       </div>`).join('');
     return `<div class="pos-block"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
