@@ -1801,6 +1801,15 @@ async function callDictAPI(word) {
     value: (m.definitions || [])[0]?.definition ? (m.definitions[0].definition.length < 30 ? m.definitions[0].definition : '') : '',
   })).filter((f) => f.label);
 
+  const rawExamples = [];
+  definitions.forEach((d) => {
+    d.defs.forEach((item) => {
+      if (item.ex && rawExamples.length < 2) {
+        rawExamples.push({ en: item.ex, zh: item.exZh || item.ex });
+      }
+    });
+  });
+
   return {
     word: entry.word,
     phonetic: phonetic,
