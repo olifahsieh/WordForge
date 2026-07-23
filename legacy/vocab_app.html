@@ -323,6 +323,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 
 /* RESPONSIVE */
 @media(max-width:520px){
+  .flashcard{aspect-ratio:4/3;}
   .options-grid{grid-template-columns:1fr;}
   .mastery-row{gap:7px;}
   .mst-btn{padding:8px 11px;font-size:.63rem;}
@@ -374,7 +375,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
           <div class="card-phonetic" id="fc-phonetic"></div>
           <button class="speak-btn" id="fc-speak" onclick="event.stopPropagation();speakCurrent()">▶ 發音</button>
           <div class="card-example-front" id="fc-example-en" style="margin-top:14px;font-size:.85rem;color:var(--text);padding:8px 12px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:90%;text-align:center;font-style:italic"></div>
-          <div class="card-hint" style="margin-top:10px">點擊翻面查看翻譯與解釋</div>
+          <div class="card-hint" style="margin-top:10px">點擊翻面</div>
         </div>
         <div class="card-face card-back">
           <div class="card-word-back" id="fc-word-back"></div>
