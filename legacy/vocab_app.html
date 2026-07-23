@@ -342,6 +342,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     <span>總計 <span class="val" id="totalCount">0</span></span>
     <span>連勝 <span class="val" id="streakCount">0</span></span>
   </div>
+  <div class="auth-ui" style="display:flex;align-items:center;gap:10px;font-size:0.85rem;">
+    <button id="fb-auth-btn" onclick="if(window.fbSignIn)window.fbSignIn()" style="padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;display:none;">登入並同步</button>
+    <div id="fb-user-info" style="display:none;align-items:center;gap:10px;">
+      <span id="fb-user-name" style="color:var(--text);font-weight:bold;"></span>
+      <button onclick="if(window.fbSignOut)window.fbSignOut()" style="padding:4px 8px;background:rgba(255,255,255,0.1);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">登出</button>
+    </div>
+  </div>
 </header>
 
 <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
@@ -821,7 +828,55 @@ function saveAll(){
   localStorage.setItem('wf_datasets',  JSON.stringify(datasets));
   localStorage.setItem('wf_active_dataset', activeDatasetId);
   localStorage.setItem('wf_streak',    streak);
+
+  if (window.fbUser && window.fbDb && window.fbSetDoc && window.fbDoc) {
+    try {
+      const docRef = window.fbDoc(window.fbDb, "users", window.fbUser.uid);
+      window.fbSetDoc(docRef, {
+        masteryMap,
+        srsMap,
+        reviewHistory,
+        datasets,
+        activeDatasetId,
+        streak,
+        lastUpdated: new Date().toISOString()
+      }, {merge: true});
+    } catch(e) { console.error("Cloud save failed", e); }
+  }
 }
+
+window.loadFromCloud = async function() {
+  if (!window.fbUser || !window.fbDb || !window.fbGetDoc || !window.fbDoc) return;
+  try {
+    const docRef = window.fbDoc(window.fbDb, "users", window.fbUser.uid);
+    const snap = await window.fbGetDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.masteryMap) masteryMap = data.masteryMap;
+      if (data.srsMap) srsMap = data.srsMap;
+      if (data.reviewHistory) reviewHistory = data.reviewHistory;
+      if (data.datasets) datasets = data.datasets;
+      if (data.activeDatasetId) activeDatasetId = data.activeDatasetId;
+      if (data.streak !== undefined) streak = data.streak;
+      
+      // Save locally to keep in sync
+      localStorage.setItem('wf_mastery',   JSON.stringify(masteryMap));
+      localStorage.setItem('wf_srs',       JSON.stringify(srsMap));
+      localStorage.setItem('wf_history',   JSON.stringify(reviewHistory));
+      localStorage.setItem('wf_datasets',  JSON.stringify(datasets));
+      localStorage.setItem('wf_active_dataset', activeDatasetId);
+      localStorage.setItem('wf_streak',    streak);
+      
+      updateHeader();
+      if (typeof initDatasets === 'function') initDatasets();
+      if (typeof renderCustomList === 'function' && currentMode === 'list') renderCustomList();
+      showToast("從雲端同步成功！");
+    }
+  } catch(e) {
+    console.error("Cloud load failed", e);
+    showToast("雲端同步失敗");
+  }
+};
 function getMastery(w){ return masteryMap[w]??-1; }
 function setMastery(w,lvl){
   masteryMap[w]=lvl;
@@ -2463,6 +2518,54 @@ function addUpdItem(word, tr, status, changed=false){
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCqJg5G1GQiffA2kBhvlg3AtainiZPWDsU",
+    authDomain: "wordforge-v1.firebaseapp.com",
+    projectId: "wordforge-v1",
+    storageBucket: "wordforge-v1.firebasestorage.app",
+    messagingSenderId: "312751237568",
+    appId: "1:312751237568:web:2f7caaf824f7b1dc630025"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  enableIndexedDbPersistence(db).catch(err => {
+    console.error("Firestore persistence error", err);
+  });
+
+  window.fbAuth = auth;
+  window.fbDb = db;
+  window.fbSignIn = () => signInWithPopup(auth, new GoogleAuthProvider());
+  window.fbSignOut = () => signOut(auth);
+  window.fbDoc = doc;
+  window.fbSetDoc = setDoc;
+  window.fbGetDoc = getDoc;
+
+  onAuthStateChanged(auth, async (user) => {
+    window.fbUser = user;
+    const authBtn = document.getElementById('fb-auth-btn');
+    const userInfo = document.getElementById('fb-user-info');
+    const userName = document.getElementById('fb-user-name');
+    
+    if (user) {
+      authBtn.style.display = 'none';
+      userInfo.style.display = 'flex';
+      userName.textContent = user.displayName;
+      if (window.loadFromCloud) await window.loadFromCloud();
+    } else {
+      authBtn.style.display = 'inline-block';
+      userInfo.style.display = 'none';
+      userName.textContent = '';
+    }
+  });
 </script>
 </body>
 </html>
