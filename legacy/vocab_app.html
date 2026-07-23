@@ -2269,10 +2269,33 @@ function confirmAddWord(){
     showToast(`「${entry.word}」已在單字庫中`);
   } else {
     WORDS.push(entry);
+
+    // 必須將新單字存入 datasets，否則重整會遺失
+    if(activeDatasetId === 'builtin'){
+      // 如果目前是內建字庫，新增單字時自動轉存為一個新的自訂字庫
+      const newDs = {
+        id: 'ds_' + Date.now(),
+        name: '我的自訂字庫',
+        date: getTodayDate(),
+        count: WORDS.length,
+        words: [...WORDS]
+      };
+      datasets.unshift(newDs);
+      activeDatasetId = newDs.id;
+    } else {
+      // 否則更新目前的字庫
+      const ds = datasets.find(d=>d.id===activeDatasetId);
+      if(ds) {
+        ds.words = [...WORDS];
+        ds.count = WORDS.length;
+      }
+    }
+
     // Rebuild groups to include new word
     localStorage.removeItem('wf_group_order');
     buildGroups();
     updateHeader();
+    saveAll(); // 觸發本地端與 Firebase 同步儲存
     showToast(`✓ 已加入「${entry.word}」`);
     // Log to added list
     const list = document.getElementById('addedList');
