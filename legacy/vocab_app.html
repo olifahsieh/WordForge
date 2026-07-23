@@ -746,79 +746,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 // ═══════════════════════════════════════
 //  BUILT-IN DATA
 // ═══════════════════════════════════════
-const RAW=[
-["adaptable","/əˈdæptəbl/","web. 適應性強","02-27"],
-["agency","/ˈeɪdʒənsi/","n. 辦事處 幫助 機構 媒介","02-27"],
-["ancestry","/ˈænsestri/","n. 門第 祖輩 祖先 祖宗","02-27"],
-["assumption","/əˈsʌmpʃn/","n. 采取 臆測 臆說","11-18"],
-["burden","/ˈbɜːrdn/","n. 包袱 擔 負荷 負載 累贅; v. 負擔","02-27"],
-["cap","/kæp/","n. 弁 便帽 冠 菌傘 帽 帽子; v. 蓋子","11-18"],
-["clash","/klæʃ/","v. 衝 抵觸 磕碰; n. 衝突 抵觸 錚錚","02-27"],
-["concrete","/ˈkɑːŋkriːt/","adj. 具體 實際","02-27"],
-["condone","/kənˈdoʊn/","web. 縱容","02-27"],
-["context","/ˈkɑːntekst/","n. 景況 前後關係","02-22"],
-["cottage","/ˈkɑːtɪdʒ/","n. 廬 茅舍 茅屋 墅","02-27"],
-["craft","/kræft/","n. 船隻 工 詭計 航 伎 手藝","02-27"],
-["cushion","/ˈkʊʃn/","n. 墊 墊子 緩衝 茵 坐墊; v. 加墊","02-27"],
-["descent","/dɪˈsent/","n. 降落 降下 侵襲","02-27"],
-["despite","/dɪˈspaɪt/","prep. 頂 儘管 任憑 雖然","11-18"],
-["distinguish","/dɪˈstɪŋɡwɪʃ/","v. 辨 辨別 辨明 分別 鑒別 判別","02-27"],
-["drawing","/ˈdrɔːɪŋ/","n. 畫 畫兒 繪畫 繪事; adj. 拉的 制圖","11-18"],
-["equivalent","/ɪˈkwɪvələnt/","n. 等價物 等同語 相等; adj. 相當的","11-18"],
-["era","/ˈɪrə/","n. 代 紀 紀元 年代 時代 世","02-27"],
-["execute","/ˈeksɪkjuːt/","v. 辦理 處決 處死 措 進行","11-18"],
-["forbidden","--","adj. 被禁止","02-27"],
-["fragility","/frəˈdʒɪləti/","web. 脆弱性","02-27"],
-["funding","/ˈfʌndɪŋ/","n. 基金 資金","11-18"],
-["gaze","/ɡeɪz/","v. 盯 盯住 凝視 覷 望; n. 目光 瞻","02-27"],
-["grant","/ɡrænt/","v. 承認 賜 賜予 發放; n. 誥 授與","11-18"],
-["heritage","/ˈherɪtɪdʒ/","n. 遺產","02-27"],
-["homage","/ˈhɑːmɪdʒ/","n. 尊敬 尊重","02-27"],
-["iconic","/aɪˈkɑːnɪk/","web. 標誌性的","02-27"],
-["impersonation","/ɪmˌpɜːrsəˈneɪʃn/","web. 冒充","02-27"],
-["jaw","/dʒɔː/","n. 顎 頜","01-01"],
-["kite","/kaɪt/","n. 風箏 空頭支票 鳶","02-27"],
-["lead","/liːd/","n. 鉛 超前 帶領 導線; v. 倡 帶 帶領 導引","02-27"],
-["liminal","/'lɪmɪnl/","adj. 閾限的","02-27"],
-["logistically","/ləˈdʒɪstɪkli/","web. 後勤上","02-27"],
-["lullaby","/ˈlʌləbaɪ/","n. 催眠曲","01-01"],
-["masquerade","/ˌmæskəˈreɪd/","v. 化妝; n. 化妝舞會 假面舞會","02-27"],
-["massive","/ˈmæsɪv/","adj. 大而重的 魁偉的 嵩厚","02-27"],
-["miscellaneous","/ˌmɪsəˈleɪniəs/","adj. 繁雜 冗雜 雜 雜項","11-18"],
-["mistress","/ˈmɪstrəs/","n. 女主人 情婦 太太 相好","02-27"],
-["modernize","/ˈmɑːdərnaɪz/","v. 近代化 現代化","02-27"],
-["nugget","/ˈnʌɡɪt/","n. 貴金屬塊 金塊 硬塊","02-27"],
-["obstacle","/ˈɑːbstəkl/","n. 絆腳石 障礙 障礙物 阻礙 阻力","02-27"],
-["occupation","/ˌɑːkjuˈpeɪʃn/","n. 業 佔用","11-18"],
-["otherwise","/ˈʌðərwaɪz/","adv. 不然 否則 如若 要不; adj. 相反的","02-27"],
-["outraged","/ˈaʊtˌreɪdʒd/","web. 憤怒的","02-27"],
-["overcome","/ˌoʊvərˈkʌm/","v. 攻下 克 克服 馴","02-27"],
-["parallel","/ˈpærəlel/","adj. 並行 平行; n. 對比 緯線","02-27"],
-["phase","/feɪz/","n. 層次 段落 階段 局面 時期","02-27"],
-["plaque","/plæk/","n. 名牌 牌匾","02-27"],
-["poke","/poʊk/","v. 撥 撥開 杵 戳 挑; n. 刺 袋","02-27"],
-["pop","/pɑːp/","n. 爆聲 流行樂曲; adj. 流行的; v. 拋出","02-27"],
-["protagonist","/prəˈtæɡənɪst/","n. 領導者 主角","02-27"],
-["pursuit","/pərˈsuːt/","n. 意興 追趕","02-27"],
-["regency","/ˈriːdʒənsi/","web. 攝政","02-27"],
-["regulate","/ˈreɡjuleɪt/","v. 固定 監察 調節 調整 校正","01-01"],
-["relative","/ˈrelətɪv/","n. 親戚; adj. 相對的","12-12"],
-["remission","/rɪˈmɪʃn/","n. 緩解 豁免","11-18"],
-["resilience","/rɪˈzɪliəns/","n. 彈力 彈性","01-01"],
-["sack","/sæk/","n. 大袋子 麻袋; v. 解僱 開除 掠","02-27"],
-["scout","/skaʊt/","v. 跟蹤 探 偵; n. 偵察 偵察兵","02-27"],
-["similarity","/ˌsɪməˈlærəti/","n. 類似 相似 相似性","02-27"],
-["steamy","/ˈstiːmi/","web. 熱氣騰騰的","02-27"],
-["stipend","/ˈstaɪpend/","n. 助學金","11-18"],
-["subtly","/ˈsʌtli/","web. 巧妙的","02-27"],
-["summation","/sʌˈmeɪʃn/","n. 和 合計","02-27"],
-["tension","/ˈtenʃn/","n. 緊張 拉緊 懸念 應力; v. 拉緊","01-01"],
-["vagus nerve","--","n. 迷走神經","01-01"],
-["versus","/ˈvɜːrsəs/","web. 相對","02-27"],
-["vulnerability","/ˌvʌlnərəˈbɪləti/","web. 脆弱性","02-27"]
-];
-
-const WORDS = RAW.map(([w,p,t,d])=>({word:w,phonetic:p,translation:t,date:d}));
+const WORDS = [];
 
 // ═══════════════════════════════════════
 //  STATE
@@ -1093,11 +1021,8 @@ function showFCCard(){
       exZhEl.style.display = 'none';
     }
   } else {
-    // Generate sample on the fly if word has no example recorded
-    exEnEl.textContent = `“We need to ${c.word} this issue as soon as possible.”`;
-    exEnEl.style.display = 'block';
-    exZhEl.textContent = `↳ 我們需要儘快處理這個問題。`;
-    exZhEl.style.display = 'block';
+    exEnEl.style.display = 'none';
+    exZhEl.style.display = 'none';
   }
 
   document.getElementById('fc-counter').textContent=`${fcIndex+1} / ${fcDeck.length}`;
@@ -1838,24 +1763,22 @@ function loadDataset(id){
 }
 function deleteDataset(id){
   datasets=datasets.filter(d=>d.id!==id);
-  if(activeDatasetId===id){ activeDatasetId='builtin'; loadBuiltin(); return; }
+  if(activeDatasetId===id){ 
+    if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) loadDataset(window.IELTS_DATASETS[0].id);
+    else WORDS.length=0; 
+    return; 
+  }
   saveAll(); renderDatasetsList(); showToast('已刪除單字集');
 }
 function loadBuiltin(){
-  WORDS.length=0; RAW.forEach(([w,p,t,d])=>WORDS.push({word:w,phonetic:p,translation:t,date:d}));
-  activeDatasetId='builtin';
-  localStorage.removeItem('wf_group_order');
-  buildGroups();
-  saveAll(); updateHeader(); renderDatasetsList(); initFlashcard();
-  showToast('✓ 已載入內建單字集');
+  if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) {
+    loadDataset(window.IELTS_DATASETS[0].id);
+  }
 }
 function renderDatasetsList(){
   const el=document.getElementById('datasetsList'); if(!el) return;
-  const isBI=activeDatasetId==='builtin';
-  let html=`<div class="dataset-item ${isBI?'active-set':''}">
-    <div class="dataset-info"><div class="dataset-name">📦 內建單字集</div><div class="dataset-meta">68 個單字 · 預設</div></div>
-    <div class="dataset-actions">${isBI?'<span class="active-tag">使用中</span>':`<button class="ds-btn load" onclick="loadBuiltin()">載入</button>`}</div>
-  </div>`;
+  
+  let html = ``;
   
   if(window.IELTS_DATASETS) {
     html += `<div class="dataset-folder" onclick="this.classList.toggle('open')">
@@ -2057,8 +1980,7 @@ async function callDictAPI(word) {
   });
 
   if (rawExamples.length === 0) {
-    rawExamples.push({ en: `We need to ${entry.word} this issue as soon as possible.`, zh: `我們需要儘快處理這個問題。` });
-    rawExamples.push({ en: `This step will help us ${entry.word} the problem.`, zh: `這個步驟將會有幫助。` });
+    // Keep empty if no examples
   }
 
   // Parallel non-blocking translation fetching with 1.5s max timeout
@@ -2570,10 +2492,17 @@ function addUpdItem(word, tr, status, changed=false){
 //  INIT
 // ═══════════════════════════════════════
 (function init(){
-  if(activeDatasetId!=='builtin'){
-    const ds=datasets.find(d=>d.id===activeDatasetId);
-    if(ds){ WORDS.length=0; ds.words.forEach(w=>WORDS.push(w)); }
+  if(activeDatasetId==='builtin'){
+    if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) {
+      activeDatasetId = window.IELTS_DATASETS[0].id;
+      localStorage.setItem('wf_active_dataset', activeDatasetId);
+    }
   }
+  
+  let ds=datasets.find(d=>d.id===activeDatasetId);
+  if(!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d=>d.id===activeDatasetId);
+  if(ds){ WORDS.length=0; ds.words.forEach(w=>WORDS.push(w)); }
+
   buildGroups();
   updateHeader();
   initFlashcard();
