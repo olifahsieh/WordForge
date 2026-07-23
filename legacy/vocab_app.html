@@ -360,13 +360,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
           <div class="card-word" id="fc-word"></div>
           <div class="card-phonetic" id="fc-phonetic"></div>
           <button class="speak-btn" id="fc-speak" onclick="event.stopPropagation();speakCurrent()">▶ 發音</button>
-          <div class="card-hint">點擊翻面查看翻譯</div>
+          <div class="card-example-front" id="fc-example-en" style="margin-top:14px;font-size:.85rem;color:var(--text);padding:8px 12px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:90%;text-align:center;font-style:italic"></div>
+          <div class="card-hint" style="margin-top:10px">點擊翻面查看翻譯與解釋</div>
         </div>
         <div class="card-face card-back">
           <div class="card-word-back" id="fc-word-back"></div>
           <div class="card-translation" id="fc-translation"></div>
-          <div class="card-examples" id="fc-examples" style="margin-top:12px;font-size:.8rem;text-align:left;color:var(--muted);width:100%;max-height:110px;overflow-y:auto;padding:8px 12px;background:rgba(0,0,0,.2);border-radius:4px;border:1px solid var(--border)"></div>
-          <button class="speak-btn" onclick="event.stopPropagation();speakCurrent()">▶ 再聽一次</button>
+          <div class="card-example-back" id="fc-example-zh" style="margin-top:12px;font-size:.85rem;color:var(--accent);padding:8px 12px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--border);width:90%;text-align:center;font-weight:700"></div>
+          <button class="speak-btn" style="margin-top:12px" onclick="event.stopPropagation();speakCurrent()">▶ 再聽一次</button>
         </div>
       </div>
     </div>
@@ -965,17 +966,24 @@ function showFCCard(){
   document.getElementById('fc-word-back').textContent=c.word;
   document.getElementById('fc-translation').textContent=c.translation;
   
-  const exEl = document.getElementById('fc-examples');
-  if (c.examples && Array.isArray(c.examples) && c.examples.length) {
-    exEl.innerHTML = c.examples.map((ex, i) => `
-      <div style="margin-bottom:6px">
-        <strong style="color:var(--accent3)">Ex ${i+1}:</strong> ${escHtml(ex.en || '')}<br>
-        <span style="color:var(--text);font-size:.78rem">↳ ${escHtml(ex.zh || '')}</span>
-      </div>
-    `).join('');
-    exEl.style.display = 'block';
+  const exEnEl = document.getElementById('fc-example-en');
+  const exZhEl = document.getElementById('fc-example-zh');
+
+  if (c.examples && Array.isArray(c.examples) && c.examples.length && c.examples[0].en) {
+    exEnEl.textContent = `“${c.examples[0].en}”`;
+    exEnEl.style.display = 'block';
+    if (c.examples[0].zh) {
+      exZhEl.textContent = `↳ ${c.examples[0].zh}`;
+      exZhEl.style.display = 'block';
+    } else {
+      exZhEl.style.display = 'none';
+    }
   } else {
-    exEl.style.display = 'none';
+    // Generate sample on the fly if word has no example recorded
+    exEnEl.textContent = `“We need to ${c.word} this issue as soon as possible.”`;
+    exEnEl.style.display = 'block';
+    exZhEl.textContent = `↳ 我們需要儘快處理這個問題。`;
+    exZhEl.style.display = 'block';
   }
 
   document.getElementById('fc-counter').textContent=`${fcIndex+1} / ${fcDeck.length}`;
