@@ -1820,10 +1820,19 @@ async function translateToZh(text) {
 
 async function callDictAPI(word) {
   const query = encodeURIComponent(word.trim());
-  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
-  if (!res.ok) throw new Error('Not found');
+  let res;
+  try {
+    res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
+  } catch {
+    throw new Error('Network error');
+  }
 
-  const [entry] = await res.json();
+  if (res.status === 404 || !res.ok) {
+    throw new Error('Not found');
+  }
+
+  const data = await res.json();
+  const entry = Array.isArray(data) ? data[0] : null;
   if (!entry) throw new Error('Not found');
 
   const phonetic = (entry.phonetics || []).find((p) => p.text && p.text.trim())?.text || entry.phonetic || '--';
