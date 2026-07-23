@@ -2006,15 +2006,20 @@ async function callDictAPI(word) {
         }
       }
     }
-  } catch {
-    // Fallback below
+  } catch (dictErr) {
+    console.warn('[WordForge] dict fetch error:', dictErr);
   }
+
+  // POS name mapping: Google Translate returns Chinese POS names, dictionary API uses English
+  const posZhToEn = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adjective', '副詞': 'adverb', '介詞': 'preposition', '連詞': 'conjunction', '感嘆詞': 'interjection', '代詞': 'pronoun' };
+  const posEnToZh = Object.fromEntries(Object.entries(posZhToEn).map(([k, v]) => [v, k]));
 
   // Build concise POS translations: primary translation first, then unique dict terms, max 3
   const posCompactParts = [];
   for (const p of definitions) {
     const posKey = (p.pos || '').toLowerCase().trim();
-    const dictTerms = (gtDictMap[posKey] || []).filter((t) => t.length <= 6);
+    const zhKey = posEnToZh[posKey] || posKey;
+    const dictTerms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter((t) => t.length <= 6);
     // Start with primary translation, then add unique dict terms
     const merged = [];
     if (gtPrimaryTr && gtPrimaryTr.length <= 6) {
