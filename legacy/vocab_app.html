@@ -1527,11 +1527,17 @@ async function openWordModal(wordStr) {
       ? `<div style="margin-top:10px"><strong style="color:var(--accent2);font-size:.8rem;font-family:'Space Mono',monospace">反義詞 Antonyms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.antonyms.map((a) => `<span style="padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(a)}')">${escHtml(a)}</span>`).join('')}</div></div>`
       : '';
 
+    const isAlreadyInWords = WORDS.some((w) => w.word.toLowerCase() === data.word.toLowerCase());
+    const addBtnHtml = isAlreadyInWords
+      ? `<span style="font-family:'Space Mono',monospace;font-size:.65rem;padding:4px 10px;border-radius:12px;background:rgba(71,255,176,.1);color:var(--success);border:1px solid var(--success)">✓ 已在單字庫</span>`
+      : `<button class="ds-btn load" style="font-size:.7rem;padding:5px 12px;background:var(--accent);color:var(--bg);border:none;font-weight:700" onclick="addWordFromModal('${escHtml(data.word.replace(/'/g, "\\'"))}')">＋ 加入單字庫</button>`;
+
     body.innerHTML = `
-      <div class="lookup-word-header" style="margin-bottom:12px">
+      <div class="lookup-word-header" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="lookup-headword" style="font-size:2.2rem">${escHtml(data.word)}</span>
         <span class="lookup-phonetic">${escHtml(data.phonetic)}</span>
-        <button class="speak-btn" onclick="speak('${escHtml(data.word)}')">▶ 發音</button>
+        <button class="speak-btn" onclick="speak('${escHtml(data.word.replace(/'/g, "\\'"))}')">▶ 發音</button>
+        <div style="margin-left:auto">${addBtnHtml}</div>
       </div>
       <div style="font-size:.85rem;color:var(--text);background:var(--surface2);padding:10px 14px;border-radius:4px;margin-bottom:20px;border:1px solid var(--border)">
         <strong>主翻譯：</strong> ${escHtml(item?.translation || data.translation_compact)}
@@ -1545,15 +1551,51 @@ async function openWordModal(wordStr) {
     `;
   } catch (e) {
     const item = WORDS.find((x) => x.word.toLowerCase() === wordStr.toLowerCase());
+    const isAlreadyInWords = !!item;
+    const addBtnHtml = isAlreadyInWords
+      ? `<span style="font-family:'Space Mono',monospace;font-size:.65rem;padding:4px 10px;border-radius:12px;background:rgba(71,255,176,.1);color:var(--success);border:1px solid var(--success)">✓ 已在單字庫</span>`
+      : `<button class="ds-btn load" style="font-size:.7rem;padding:5px 12px;background:var(--accent);color:var(--bg);border:none;font-weight:700" onclick="addWordFromModal('${escHtml(wordStr.replace(/'/g, "\\'"))}')">＋ 加入單字庫</button>`;
+
     body.innerHTML = `
-      <div class="lookup-word-header">
+      <div class="lookup-word-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="lookup-headword">${escHtml(wordStr)}</span>
-        <button class="speak-btn" onclick="speak('${escHtml(wordStr)}')">▶ 發音</button>
+        <button class="speak-btn" onclick="speak('${escHtml(wordStr.replace(/'/g, "\\'"))}')">▶ 發音</button>
+        <div style="margin-left:auto">${addBtnHtml}</div>
       </div>
       <div style="margin-top:16px;font-size:.9rem;color:var(--text)">
         <strong>翻譯：</strong> ${escHtml(item?.translation || '--')}
       </div>
     `;
+  }
+}
+
+async function addWordFromModal(wordStr) {
+  const exists = WORDS.find((w) => w.word.toLowerCase() === wordStr.toLowerCase());
+  if (exists) {
+    showToast(`「${wordStr}」已在單字庫中`);
+    return;
+  }
+
+  showToast(`⏳ 正在加入「${wordStr}」…`);
+  try {
+    const data = await callDictAPI(wordStr);
+    const entry = {
+      word: data.word,
+      phonetic: data.phonetic || '--',
+      translation: data.translation_compact,
+      examples: data.examples || [],
+      date: getTodayDate(),
+    };
+    WORDS.push(entry);
+    localStorage.removeItem('wf_group_order');
+    buildGroups();
+    saveAll();
+    updateHeader();
+    if (typeof filterList === 'function') filterList();
+    showToast(`✓ 已成功將「${data.word}」加入單字庫！`);
+    openWordModal(wordStr);
+  } catch (e) {
+    showToast(`⚠ 加入失敗，請重試`);
   }
 }
 
