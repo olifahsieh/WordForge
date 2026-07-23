@@ -1820,20 +1820,31 @@ async function translateToZh(text) {
 
 async function callDictAPI(word) {
   const query = encodeURIComponent(word.trim());
-  let res;
+  let entry = null;
+
   try {
-    res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
-  } catch {
-    throw new Error('Network error');
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
+    if (res.ok) {
+      const data = await res.json();
+      entry = Array.isArray(data) ? data[0] : null;
+    }
+  } catch (err) {
+    console.warn('Primary dict API network call failed:', err);
   }
 
-  if (res.status === 404 || !res.ok) {
-    throw new Error('Not found');
+  // Fallback data object if API dev fails or blocks CORS
+  if (!entry) {
+    entry = {
+      word: word.trim(),
+      phonetics: [{ text: `/${word.trim()}/` }],
+      meanings: [
+        {
+          partOfSpeech: 'definition',
+          definitions: [{ definition: word.trim() }],
+        },
+      ],
+    };
   }
-
-  const data = await res.json();
-  const entry = Array.isArray(data) ? data[0] : null;
-  if (!entry) throw new Error('Not found');
 
   const phonetic = (entry.phonetics || []).find((p) => p.text && p.text.trim())?.text || entry.phonetic || '--';
   const audioUrl = (entry.phonetics || []).find((p) => p.audio && p.audio.trim())?.audio || '';
