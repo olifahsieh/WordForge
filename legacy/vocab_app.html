@@ -1977,19 +1977,25 @@ async function callDictAPI(word) {
   await Promise.race([Promise.allSettled(transTasks), timeoutPromise]);
 
   // Fetch ultra-concise direct word translations for each part of speech
-  // Uses Google Translate dict mode (dt=bd) which returns multiple meanings grouped by POS
-  let gtDictMap = {}; // { noun: ['推','推動','推力'], verb: ['推','推進'] }
+  // Uses Google Translate combined dict+translate mode (dt=bd&dt=t)
+  // dt=t gives the single most common translation, dt=bd gives dictionary terms grouped by POS
+  let gtDictMap = {}; // { noun: ['推力','奮力'], verb: ['按','推','擠'] }
+  let gtPrimaryTr = ''; // primary translation from dt=t (e.g. "推")
   try {
     const dictCtrl = new AbortController();
     const dictTimeout = setTimeout(() => dictCtrl.abort(), 1500);
     const dictRes = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=bd&q=${encodeURIComponent(entry.word)}`,
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=bd&dt=t&q=${encodeURIComponent(entry.word)}`,
       { signal: dictCtrl.signal }
     );
     clearTimeout(dictTimeout);
     if (dictRes.ok) {
       const dictData = await dictRes.json();
-      // dictData[1] = array of [ posString, [term1, term2, ...], ... ]
+      // dt=t result: dictData[0] = [[translatedText, ...], ...]
+      if (dictData && dictData[0] && dictData[0][0] && dictData[0][0][0]) {
+        gtPrimaryTr = dictData[0][0][0].trim();
+      }
+      // dt=bd result: dictData[1] = array of [ posString, [term1, term2, ...], ... ]
       if (dictData && dictData[1]) {
         for (const group of dictData[1]) {
           const pos = (group[0] || '').toLowerCase().trim();
@@ -2004,14 +2010,22 @@ async function callDictAPI(word) {
     // Fallback below
   }
 
-  // Map POS names (e.g. "noun" -> "noun", "verb" -> "verb")
+  // Build concise POS translations: primary translation first, then unique dict terms, max 3
   const posCompactParts = [];
   for (const p of definitions) {
     const posKey = (p.pos || '').toLowerCase().trim();
-    let terms = gtDictMap[posKey] || [];
-    // Filter out overly long terms (keep concise single-word / two-char terms)
-    terms = terms.filter((t) => t.length <= 6);
-    let posZh = terms.slice(0, 3).join('、');
+    const dictTerms = (gtDictMap[posKey] || []).filter((t) => t.length <= 6);
+    // Start with primary translation, then add unique dict terms
+    const merged = [];
+    if (gtPrimaryTr && gtPrimaryTr.length <= 6) {
+      merged.push(gtPrimaryTr);
+    }
+    for (const t of dictTerms) {
+      if (!merged.includes(t) && merged.length < 3) {
+        merged.push(t);
+      }
+    }
+    let posZh = merged.slice(0, 3).join('、');
     if (!posZh) {
       posZh = zhWordTr;
     }
