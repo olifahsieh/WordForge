@@ -1824,10 +1824,18 @@ async function lookupWord(){
 
   try {
     const data = await callDictAPI(word);
-    if(data.error){ showToast(`⚠ 找不到「${word}」`); setLookupLoading(false); return; }
+    if (data.error) {
+      showToast(`⚠ 找不到單字「${word}」`);
+      setLookupLoading(false);
+      return;
+    }
     renderLookupResult(data);
-  } catch(e){
-    showToast('⚠ 查詢失敗，請檢查網路或稍後再試');
+  } catch (e) {
+    if (e && e.message === 'Not found') {
+      showToast(`⚠ 字典庫中找不到單字「${word}」`);
+    } else {
+      showToast('⚠ 查詢失敗，請檢查網路連線或單字拼寫');
+    }
     console.error(e);
   }
   setLookupLoading(false);
