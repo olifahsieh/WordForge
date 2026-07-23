@@ -1957,25 +1957,24 @@ async function callDictAPI(word) {
     rawExamples.push({ en: `This step will help us ${entry.word} the problem.`, zh: `這個步驟將會有幫助。` });
   }
 
-  // Fetch initial translations synchronously for definitions and examples
+  // Parallel non-blocking translation fetching with 1.5s max timeout
+  const transTasks = [];
   for (const m of definitions) {
     for (const d of m.defs) {
       if (d.def) {
-        try {
-          d.defZh = await translateToZh(d.def);
-        } catch {
-          d.defZh = '';
-        }
+        transTasks.push(translateToZh(d.def).then((tr) => (d.defZh = tr)).catch(() => {}));
       }
       if (d.ex) {
-        try {
-          d.exZh = await translateToZh(d.ex);
-        } catch {
-          d.exZh = '';
-        }
+        transTasks.push(translateToZh(d.ex).then((tr) => (d.exZh = tr)).catch(() => {}));
       }
     }
   }
+
+  const headwordTask = translateToZh(entry.word).then((tr) => { if (tr) zhWordTr = tr; }).catch(() => {});
+  transTasks.push(headwordTask);
+
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+  await Promise.race([Promise.allSettled(transTasks), timeoutPromise]);
 
   // Assemble multi-part-of-speech concise translation string (max 2 common terms per POS)
   // Example: "noun. 指揮棒、接力棒; verb. 擊打"
