@@ -1628,6 +1628,17 @@ Rules:
 
 let pendingLookupData = null;
 
+async function translateToZh(text) {
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-TW`);
+    if (!res.ok) return text;
+    const data = await res.json();
+    return data.responseData?.translatedText || text;
+  } catch {
+    return text;
+  }
+}
+
 async function callDictAPI(word) {
   const query = encodeURIComponent(word.trim());
   const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`);
@@ -1647,16 +1658,20 @@ async function callDictAPI(word) {
     })),
   }));
 
-  const compactList = definitions
-    .map((d) => `${d.pos}. ${d.defs.map((x) => x.def).join('; ')}`)
-    .slice(0, 2)
-    .join(' | ');
+  // Fetch Chinese translation for the headword
+  const zhWordTr = await translateToZh(entry.word);
+
+  // Translate top definition into Chinese
+  const topDefEn = definitions[0]?.defs[0]?.def || '';
+  const topDefZh = topDefEn ? await translateToZh(topDefEn) : '';
+
+  const compactList = `${definitions[0]?.pos || ''}. ${zhWordTr} — ${topDefZh}`;
 
   return {
     word: entry.word,
     phonetic: phonetic,
     audioUrl: audioUrl,
-    translation_compact: compactList || 'No definition found',
+    translation_compact: compactList || zhWordTr,
     definitions: definitions,
   };
 }
