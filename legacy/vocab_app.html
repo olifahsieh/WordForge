@@ -1979,16 +1979,9 @@ async function callDictAPI(word) {
     // Keep original
   }
 
-  // Assemble concise translation string with max 2 meanings per part of speech
-  const compactParts = definitions.map((p) => {
-    const zhTerms = (p.defs || [])
-      .map((d) => d.defZh || '')
-      .filter(Boolean)
-      .slice(0, 2);
-    const zhStr = zhTerms.length ? zhTerms.join('、') : zhWordTr;
-    return `${p.pos}. ${zhStr}`;
-  });
-  const compactList = compactParts.length ? compactParts.join('; ') : `n/v. ${zhWordTr}`;
+  // Ultra-concise direct headword translation string for flashcards (e.g., "noun. 嘗試")
+  const mainPos = definitions[0]?.pos || 'n/v';
+  const compactList = `${mainPos}. ${zhWordTr}`;
 
   // Background translation for detailed definitions and examples
   setTimeout(async () => {
