@@ -632,10 +632,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       </div>
       <div class="lookup-spinner" id="lookupSpinner">AI 正在查詢字典中</div>
       <div class="lookup-result" id="lookupResult">
-        <div class="lookup-word-header">
+        <div class="lookup-word-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <span class="lookup-headword" id="lr-word"></span>
           <span class="lookup-phonetic" id="lr-phonetic"></span>
           <button class="lookup-speak-btn" onclick="speak(document.getElementById('lr-word').textContent)">▶ 發音</button>
+        </div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin:12px 0 18px;border:1px solid var(--accent);display:flex;align-items:center;gap:10px">
+          <span style="font-size:.65rem;font-family:'Space Mono',monospace;padding:3px 7px;background:var(--accent);color:var(--bg);border-radius:3px;font-weight:700">中文單字字義</span>
+          <span id="lr-zh-tr"></span>
         </div>
         <div class="lookup-section">
           <div class="lookup-section-title">詞性與字義</div>
@@ -1961,6 +1965,7 @@ function renderLookupResult(data){
 
   document.getElementById('lr-word').textContent = data.word;
   document.getElementById('lr-phonetic').textContent = data.phonetic||'';
+  document.getElementById('lr-zh-tr').textContent = data.zhWordTr || data.word;
 
   // Definitions
   const defs = document.getElementById('lr-definitions');
