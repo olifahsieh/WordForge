@@ -638,9 +638,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
           <span class="lookup-phonetic" id="lr-phonetic"></span>
           <button class="lookup-speak-btn" onclick="speak(document.getElementById('lr-word').textContent)">▶ 發音</button>
         </div>
-        <div style="font-size:.95rem;color:var(--text);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border)">
-          <span style="font-size:.7rem;font-family:'Space Mono',monospace;color:var(--accent);margin-right:8px;font-weight:700">【中文翻譯】</span>
-          <strong style="color:var(--accent);font-size:1.1rem" id="lr-direct-tr"></strong>
+        <div style="font-size:1.05rem;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border);font-weight:700">
+          <span id="lr-direct-tr"></span>
         </div>
         <div class="lookup-section">
           <div class="lookup-section-title">詞性與字義</div>
@@ -1603,9 +1602,8 @@ async function openWordModal(wordStr) {
         <button class="speak-btn" onclick="speak('${escHtml(data.word.replace(/'/g, "\\'"))}')">▶ 發音</button>
         <div style="margin-left:auto">${addBtnHtml}</div>
       </div>
-      <div style="font-size:.95rem;color:var(--text);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border)">
-        <span style="font-size:.7rem;font-family:'Space Mono',monospace;color:var(--accent);margin-right:8px;font-weight:700">【中文翻譯】</span>
-        <strong style="color:var(--accent);font-size:1.1rem">${escHtml(data.translation_compact || item?.translation || data.zhWordTr)}</strong>
+      <div style="font-size:1.05rem;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border);font-weight:700">
+        ${escHtml(data.translation_compact || item?.translation || data.zhWordTr)}
       </div>
       <div class="lookup-section">
         <div class="lookup-section-title">詞性與詳細字義</div>
@@ -1979,17 +1977,28 @@ async function callDictAPI(word) {
     }
   }
 
-  let zhWordTr = entry.word;
-  try {
-    const trResult = await translateToZh(entry.word);
-    if (trResult) zhWordTr = trResult;
-  } catch {
-    // Keep original
-  }
+  // Assemble multi-part-of-speech concise translation string (max 2 common terms per POS)
+  // Example: "noun. 指揮棒、接力棒; verb. 擊打"
+  const posCompactParts = definitions.map((p) => {
+    const zhTerms = [];
+    (p.defs || []).forEach((d) => {
+      if (d.defZh) {
+        // Extract concise noun/verb headword meanings from translated definition string
+        const cleanTerm = d.defZh
+          .replace(/（[^）]*）/g, '')
+          .replace(/\([^)]*\)/g, '')
+          .split(/[；;,\s。]/)[0]
+          .trim();
+        if (cleanTerm && !zhTerms.includes(cleanTerm)) {
+          zhTerms.push(cleanTerm);
+        }
+      }
+    });
+    const finalZh = zhTerms.length ? zhTerms.slice(0, 2).join('、') : zhWordTr;
+    return `${p.pos}. ${finalZh}`;
+  });
 
-  // Ultra-concise direct headword translation string for flashcards (e.g., "noun. 嘗試")
-  const mainPos = definitions[0]?.pos || 'n/v';
-  const compactList = `${mainPos}. ${zhWordTr}`;
+  const compactList = posCompactParts.length ? posCompactParts.join('; ') : `n/v. ${zhWordTr}`;
 
   // Background translation for detailed definitions and examples
   setTimeout(async () => {
