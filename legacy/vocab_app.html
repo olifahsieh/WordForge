@@ -941,15 +941,55 @@ function switchMode(m,btn){
 }
 
 // ═══════════════════════════════════════
-//  SPEECH
+//  SPEECH (Optimized for Natural High-Quality Human Voices)
 // ═══════════════════════════════════════
-function speak(word, rate=1){
-  if(!window.speechSynthesis){ showToast('⚠ 此瀏覽器不支援語音'); return; }
-  window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(word);
-  u.lang='en-US'; u.rate=rate; window.speechSynthesis.speak(u);
+let preferredVoice = null;
+function getNaturalVoice() {
+  if (!window.speechSynthesis) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  // Preferred high-quality natural voice keywords
+  const preferredNames = [
+    'Samantha', 'Alex', 'Victoria', 'Karen', 'Daniel', 
+    'Google US English', 'Google UK English Female', 'Google UK English Male',
+    'Fiona', 'Moira', 'Ava', 'Allison'
+  ];
+
+  for (const name of preferredNames) {
+    const found = voices.find((v) => v.name.includes(name) && v.lang.startsWith('en'));
+    if (found) return found;
+  }
+
+  // Fallback to any en-US or en-GB voice
+  return voices.find((v) => v.lang === 'en-US') || voices.find((v) => v.lang.startsWith('en')) || voices[0];
 }
-function speakCurrent(rate=1){ if(_currentWord) speak(_currentWord,rate); }
+
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    preferredVoice = getNaturalVoice();
+  };
+}
+
+function speak(word, rate = 0.88) {
+  if (!window.speechSynthesis) {
+    showToast('⚠ 此瀏覽器不支援語音');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(word);
+  u.lang = 'en-US';
+  u.rate = rate; // Adjusted to natural comfortable speaking pace (0.88)
+  u.pitch = 1.0;
+
+  if (!preferredVoice) preferredVoice = getNaturalVoice();
+  if (preferredVoice) u.voice = preferredVoice;
+
+  window.speechSynthesis.speak(u);
+}
+function speakCurrent(rate = 0.88) {
+  if (_currentWord) speak(_currentWord, rate);
+}
 
 // ═══════════════════════════════════════
 //  FLASHCARD  (uses full WORDS, not grouped)
