@@ -1765,20 +1765,47 @@ Rules:
 let pendingLookupData = null;
 
 async function translateToZh(text) {
-  if (!text) return '';
+  if (!text || !text.trim()) return '';
+  const query = encodeURIComponent(text.trim());
+
+  // 1. Try Google Translate Client Endpoint (Instant & High Rate Limit)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-TW`, {
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${query}`, {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    if (!res.ok) return text;
-    const data = await res.json();
-    return data.responseData?.translatedText || text;
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0]) {
+        const translatedParts = data[0].map((part) => part[0]).filter(Boolean);
+        if (translatedParts.length) return translatedParts.join('');
+      }
+    }
   } catch {
-    return text;
+    // Fallthrough to secondary translation service
   }
+
+  // 2. Fallback to MyMemory API
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${query}&langpair=en|zh-TW`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.responseData?.translatedText && !data.responseData.translatedText.startsWith('MYMEMORY WARNING')) {
+        return data.responseData.translatedText;
+      }
+    }
+  } catch {
+    // Fallback to original text
+  }
+
+  return text;
 }
 
 async function callDictAPI(word) {
