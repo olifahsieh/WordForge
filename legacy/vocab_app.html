@@ -632,14 +632,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       </div>
       <div class="lookup-spinner" id="lookupSpinner">AI 正在查詢字典中</div>
       <div class="lookup-result" id="lookupResult">
-        <div class="lookup-word-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="lookup-word-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
           <span class="lookup-headword" id="lr-word"></span>
           <span class="lookup-phonetic" id="lr-phonetic"></span>
           <button class="lookup-speak-btn" onclick="speak(document.getElementById('lr-word').textContent)">▶ 發音</button>
-        </div>
-        <div style="font-size:1.1rem;font-weight:700;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin:12px 0 18px;border:1px solid var(--accent);display:flex;align-items:center;gap:10px">
-          <span style="font-size:.65rem;font-family:'Space Mono',monospace;padding:3px 7px;background:var(--accent);color:var(--bg);border-radius:3px;font-weight:700">中文單字字義</span>
-          <span id="lr-zh-tr"></span>
         </div>
         <div class="lookup-section">
           <div class="lookup-section-title">詞性與字義</div>
@@ -1517,17 +1513,17 @@ async function openWordModal(wordStr) {
         const items = (pos.defs || [])
           .map(
             (m, i) => `
-          <div class="def-item" style="margin-bottom:12px">
+          <div class="def-item" style="margin-bottom:14px">
             <span class="def-num">${i + 1}</span>
             <div>
-              <div class="def-text"><strong style="color:var(--accent2)">${escHtml(m.def)}</strong></div>
-              ${m.defZh ? `<div style="color:var(--accent);font-size:.85rem;margin-top:2px">↳ ${escHtml(m.defZh)}</div>` : ''}
-              ${m.ex ? `<div class="def-example" style="margin-top:4px">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text)">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
+              <div class="def-text"><strong style="color:var(--text);font-size:.95rem">${escHtml(m.def)}</strong></div>
+              ${m.defZh ? `<div style="color:var(--accent);font-size:1.05rem;font-weight:700;margin-top:4px;line-height:1.5">↳ ${escHtml(m.defZh)}</div>` : ''}
+              ${m.ex ? `<div class="def-example" style="margin-top:6px;font-size:.82rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.8rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
             </div>
           </div>`,
           )
           .join('');
-        return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
+        return `<div class="pos-block" style="margin-bottom:18px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
       })
       .join('');
 
@@ -1549,15 +1545,11 @@ async function openWordModal(wordStr) {
       : '';
 
     body.innerHTML = `
-      <div class="lookup-word-header" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="lookup-word-header" style="margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span class="lookup-headword" style="font-size:2.2rem">${escHtml(data.word)}</span>
         <span class="lookup-phonetic">${escHtml(data.phonetic)}</span>
         <button class="speak-btn" onclick="speak('${escHtml(data.word.replace(/'/g, "\\'"))}')">▶ 發音</button>
         <div style="margin-left:auto">${addBtnHtml}</div>
-      </div>
-      <div style="font-size:1.15rem;font-weight:700;color:var(--accent);background:var(--surface2);padding:12px 16px;border-radius:6px;margin-bottom:20px;border:1px solid var(--accent);display:flex;align-items:center;gap:10px">
-        <span style="font-size:.7rem;font-family:'Space Mono',monospace;padding:3px 8px;background:var(--accent);color:var(--bg);border-radius:3px;font-weight:700;text-transform:uppercase">中文單字字義</span>
-        <span>${escHtml(data.zhWordTr || item?.translation || data.translation_compact)}</span>
       </div>
       <div class="lookup-section">
         <div class="lookup-section-title">詞性與詳細字義</div>
