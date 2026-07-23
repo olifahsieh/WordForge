@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="WordForge">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="data/ielts_core.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+TC:wght@300;400;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -200,6 +202,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 .ds-btn.del:hover{color:var(--danger);border-color:var(--danger);}
 .active-tag{font-family:'Space Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:2px;background:var(--accent);color:var(--bg);letter-spacing:.5px;}
 .empty-state{text-align:center;padding:26px;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);}
+
+/* FOLDER UI */
+.dataset-folder { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+.dataset-folder .folder-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 13px; font-weight: 700; font-size: .9rem; color: var(--text); }
+.dataset-folder .folder-content { display: none; padding: 0 13px 13px; border-top: 1px solid var(--border); cursor: default; }
+.dataset-folder.open .folder-content { display: block; margin-top:10px; }
+.dataset-folder.open .folder-toggle { transform: rotate(180deg); }
 
 /* ══ RESULT ══ */
 .result-screen{text-align:center;padding:52px 20px;display:none;}
@@ -1817,7 +1826,9 @@ function confirmImport(){
 }
 function cancelImport(){ pendingWords=[]; pendingFileName=''; document.getElementById('previewPanel').classList.remove('show'); }
 function loadDataset(id){
-  const ds=datasets.find(d=>d.id===id); if(!ds) return;
+  let ds=datasets.find(d=>d.id===id); 
+  if(!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d=>d.id===id);
+  if(!ds) return;
   WORDS.length=0; ds.words.forEach(w=>WORDS.push(w));
   activeDatasetId=id;
   localStorage.removeItem('wf_group_order');
@@ -1845,6 +1856,27 @@ function renderDatasetsList(){
     <div class="dataset-info"><div class="dataset-name">📦 內建單字集</div><div class="dataset-meta">68 個單字 · 預設</div></div>
     <div class="dataset-actions">${isBI?'<span class="active-tag">使用中</span>':`<button class="ds-btn load" onclick="loadBuiltin()">載入</button>`}</div>
   </div>`;
+  
+  if(window.IELTS_DATASETS) {
+    html += `<div class="dataset-folder" onclick="this.classList.toggle('open')">
+      <div class="folder-header">
+        <div class="folder-title">📂 雅思核心 3000 字</div>
+        <div class="folder-toggle">▼</div>
+      </div>
+      <div class="folder-content" onclick="event.stopPropagation()">`;
+      
+    window.IELTS_DATASETS.forEach(ds => {
+      const isA = activeDatasetId === ds.id;
+      html += `<div class="dataset-item ${isA?'active-set':''}" style="margin-bottom:12px">
+        <div class="dataset-info"><div class="dataset-name">📄 ${escHtml(ds.name.replace('雅思核心 - ',''))}</div><div class="dataset-meta">${ds.count} 個 · 內建字庫</div></div>
+        <div class="dataset-actions">
+          ${isA?'<span class="active-tag">使用中</span>':`<button class="ds-btn load" onclick="loadDataset('${ds.id}')">載入</button>`}
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
   if(!datasets.length) html+=`<div class="empty-state">尚未上傳任何 CSV 單字集</div>`;
   else datasets.forEach(ds=>{
     const isA=activeDatasetId===ds.id;
