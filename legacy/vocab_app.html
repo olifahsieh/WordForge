@@ -1644,8 +1644,14 @@ Rules:
 let pendingLookupData = null;
 
 async function translateToZh(text) {
+  if (!text) return '';
   try {
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-TW`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-TW`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     if (!res.ok) return text;
     const data = await res.json();
     return data.responseData?.translatedText || text;
@@ -1667,43 +1673,42 @@ async function callDictAPI(word) {
 
   const definitions = (entry.meanings || []).map((m) => ({
     pos: m.partOfSpeech || 'definition',
-    defs: (m.definitions || []).slice(0, 3).map((d) => ({
+    defs: (m.definitions || []).slice(0, 2).map((d) => ({
       def: d.definition || '',
       ex: d.example || '',
     })),
   }));
 
-  // Translate all definitions and examples for each part of speech into Chinese
+  // Parallel non-blocking translations
+  const translatePromises = [];
+
   for (const m of definitions) {
     for (const d of m.defs) {
       if (d.def) {
-        d.defZh = await translateToZh(d.def);
+        translatePromises.push(translateToZh(d.def).then((tr) => (d.defZh = tr)));
       }
       if (d.ex) {
-        d.exZh = await translateToZh(d.ex);
+        translatePromises.push(translateToZh(d.ex).then((tr) => (d.exZh = tr)));
       }
     }
   }
 
-  // Fetch Chinese translation for the headword
-  const zhWordTr = await translateToZh(entry.word);
-  const topDefZh = definitions[0]?.defs[0]?.defZh || '';
+  let zhWordTr = entry.word;
+  translatePromises.push(translateToZh(entry.word).then((tr) => (zhWordTr = tr)));
 
-  // Collect up to 2 example sentences and translate them to Chinese
+  await Promise.allSettled(translatePromises);
+
+  const topDefZh = definitions[0]?.defs[0]?.defZh || definitions[0]?.defs[0]?.def || '';
+  const compactList = `${definitions[0]?.pos || ''}. ${zhWordTr}${topDefZh ? ` — ${topDefZh}` : ''}`;
+
   const rawExamples = [];
   definitions.forEach((d) => {
     d.defs.forEach((item) => {
       if (item.ex && rawExamples.length < 2) {
-        rawExamples.push(item.ex);
+        rawExamples.push({ en: item.ex, zh: item.exZh || item.ex });
       }
     });
   });
-
-  const examples = [];
-  for (const exEn of rawExamples) {
-    const exZh = await translateToZh(exEn);
-    examples.push({ en: exEn, zh: exZh });
-  }
 
   return {
     word: entry.word,
@@ -1711,7 +1716,7 @@ async function callDictAPI(word) {
     audioUrl: audioUrl,
     translation_compact: compactList || zhWordTr,
     definitions: definitions,
-    examples: examples,
+    examples: rawExamples,
   };
 }
 
