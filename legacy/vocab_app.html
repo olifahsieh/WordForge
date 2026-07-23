@@ -1519,6 +1519,14 @@ async function openWordModal(wordStr) {
       })
       .join('');
 
+    const synonymsHtml = (data.synonyms || []).length
+      ? `<div style="margin-top:14px"><strong style="color:var(--accent3);font-size:.8rem;font-family:'Space Mono',monospace">近義詞 Synonyms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.synonyms.map((s) => `<span style="padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(s)}')">${escHtml(s)}</span>`).join('')}</div></div>`
+      : '';
+
+    const antonymsHtml = (data.antonyms || []).length
+      ? `<div style="margin-top:10px"><strong style="color:var(--accent2);font-size:.8rem;font-family:'Space Mono',monospace">反義詞 Antonyms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.antonyms.map((a) => `<span style="padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(a)}')">${escHtml(a)}</span>`).join('')}</div></div>`
+      : '';
+
     body.innerHTML = `
       <div class="lookup-word-header" style="margin-bottom:12px">
         <span class="lookup-headword" style="font-size:2.2rem">${escHtml(data.word)}</span>
@@ -1532,6 +1540,8 @@ async function openWordModal(wordStr) {
         <div class="lookup-section-title">詞性與詳細字義</div>
         ${defsHtml}
       </div>
+      ${synonymsHtml}
+      ${antonymsHtml}
     `;
   } catch (e) {
     const item = WORDS.find((x) => x.word.toLowerCase() === wordStr.toLowerCase());
@@ -1770,14 +1780,26 @@ async function callDictAPI(word) {
   const topDefZh = definitions[0]?.defs[0]?.defZh || definitions[0]?.defs[0]?.def || '';
   const compactList = `${definitions[0]?.pos || ''}. ${zhWordTr}${topDefZh ? ` — ${topDefZh}` : ''}`;
 
-  const rawExamples = [];
-  definitions.forEach((d) => {
-    d.defs.forEach((item) => {
-      if (item.ex && rawExamples.length < 2) {
-        rawExamples.push({ en: item.ex, zh: item.exZh || item.ex });
-      }
+  // Extract synonyms, antonyms, and related forms
+  const synonymsSet = new Set();
+  const antonymsSet = new Set();
+  (entry.meanings || []).forEach((m) => {
+    (m.synonyms || []).forEach((s) => synonymsSet.add(s));
+    (m.antonyms || []).forEach((a) => antonymsSet.add(a));
+    (m.definitions || []).forEach((d) => {
+      (d.synonyms || []).forEach((s) => synonymsSet.add(s));
+      (d.antonyms || []).forEach((a) => antonymsSet.add(a));
     });
   });
+
+  const synonyms = Array.from(synonymsSet).slice(0, 6);
+  const antonyms = Array.from(antonymsSet).slice(0, 6);
+
+  // Extract word forms (part of speech forms / inflections if available)
+  const forms = (entry.meanings || []).map((m) => ({
+    label: m.partOfSpeech || '',
+    value: (m.definitions || [])[0]?.definition ? (m.definitions[0].definition.length < 30 ? m.definitions[0].definition : '') : '',
+  })).filter((f) => f.label);
 
   return {
     word: entry.word,
@@ -1786,6 +1808,9 @@ async function callDictAPI(word) {
     translation_compact: compactList || zhWordTr,
     definitions: definitions,
     examples: rawExamples,
+    synonyms: synonyms,
+    antonyms: antonyms,
+    forms: forms,
   };
 }
 
