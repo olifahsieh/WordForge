@@ -1903,12 +1903,19 @@ async function callDictAPI(word) {
     rawExamples.push({ en: `This step will help us ${entry.word} the problem.`, zh: `這個步驟將會有幫助。` });
   }
 
-  const compactList = `${definitions[0]?.pos || ''}. ${entry.word}`;
+  let zhWordTr = entry.word;
+  try {
+    const trResult = await translateToZh(entry.word);
+    if (trResult) zhWordTr = trResult;
+  } catch {
+    // Keep original
+  }
 
-  // Start background translation without blocking UI
+  const compactList = `${definitions[0]?.pos || 'n/v'}. ${zhWordTr}`;
+
+  // Background translation for detailed definitions and examples
   setTimeout(async () => {
     try {
-      const zhWord = await translateToZh(entry.word);
       for (const m of definitions) {
         for (const d of m.defs) {
           if (d.def && !d.defZh) d.defZh = await translateToZh(d.def);
@@ -1918,14 +1925,11 @@ async function callDictAPI(word) {
       for (const exObj of rawExamples) {
         if (exObj.en && !exObj.zh) exObj.zh = await translateToZh(exObj.en);
       }
-      // Re-render UI after translation arrives
       if (pendingLookupData && pendingLookupData.word === entry.word) {
-        pendingLookupData.zhWordTr = zhWord;
-        pendingLookupData.translation_compact = `${definitions[0]?.pos || ''}. ${zhWord}`;
         renderLookupResult(pendingLookupData);
       }
-    } catch (e) {
-      // Background translation failed silently
+    } catch {
+      // Ignore background errors
     }
   }, 0);
 
@@ -1933,7 +1937,7 @@ async function callDictAPI(word) {
     word: entry.word,
     phonetic: phonetic,
     audioUrl: audioUrl,
-    zhWordTr: entry.word,
+    zhWordTr: zhWordTr,
     translation_compact: compactList,
     definitions: definitions,
     examples: rawExamples,
