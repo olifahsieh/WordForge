@@ -2347,6 +2347,7 @@ async function runUpdate(){
         const oldPh = WORDS[idx].phonetic;
         WORDS[idx].phonetic    = data.phonetic || WORDS[idx].phonetic;
         WORDS[idx].translation = data.translation_compact || WORDS[idx].translation;
+        WORDS[idx].examples    = (data.examples && data.examples.length) ? data.examples : WORDS[idx].examples;
         addUpdItem(w.word, WORDS[idx].translation, '✓ 已更新', oldTr!==WORDS[idx].translation||oldPh!==WORDS[idx].phonetic);
         ok++;
       }
