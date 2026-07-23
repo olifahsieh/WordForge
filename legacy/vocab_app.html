@@ -1751,19 +1751,29 @@ function processCSVFile(file){
   r.readAsText(file,'UTF-8');
 }
 function parseCSV(text){
-  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+  if(!lines.length) return [];
   if(lines[0].charCodeAt(0)===0xFEFF) lines[0]=lines[0].slice(1);
-  const fl=lines[0].toLowerCase();
-  let start=(fl.includes('word')||fl.includes('translation'))?1:0;
+  
+  const headers = splitCSV(lines[0].toLowerCase()).map(h => h.trim());
+  const hasHeader = headers.some(h => h.includes('word') || h.includes('meaning') || h.includes('translation') || h.includes('單字'));
+  
+  let iw=0, ip=1, it=2;
+  if(hasHeader){
+    iw = headers.findIndex(h=>h.includes('word')||h.includes('單字')); if(iw<0) iw=0;
+    ip = headers.findIndex(h=>h.includes('phonetic')||h.includes('音標'));
+    it = headers.findIndex(h=>h.includes('meaning')||h.includes('translation')||h.includes('解釋')||h.includes('中文')); if(it<0) it=2;
+  }
+  
   const words=[];
-  for(let i=start;i<lines.length;i++){
-    const line=lines[i].trim(); if(!line) continue;
-    const cols=splitCSV(line);
-    const word=(cols[0]||'').trim(); if(!word) continue;
-    const phonetic=(cols[1]||'--').trim()||'--';
-    const translation=(cols[2]||'').trim();
-    const date=(cols[3]||getTodayDate()).trim()||getTodayDate();
-    if(word&&translation) words.push({word,phonetic,translation,date});
+  for(let i=(hasHeader?1:0); i<lines.length; i++){
+    const cols=splitCSV(lines[i].trim());
+    const word=(cols[iw]||'').trim(); if(!word) continue;
+    let phonetic=(ip>=0 ? cols[ip] : undefined) || '--'; phonetic=phonetic.trim();
+    let translation=(cols[it]||'').trim();
+    
+    if(!hasHeader && cols.length===2){ phonetic='--'; translation=(cols[1]||'').trim(); }
+    if(word && translation) words.push({word,phonetic,translation,date:getTodayDate()});
   }
   return words;
 }
