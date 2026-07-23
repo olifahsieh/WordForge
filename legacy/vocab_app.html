@@ -1977,26 +1977,42 @@ async function callDictAPI(word) {
   await Promise.race([Promise.allSettled(transTasks), timeoutPromise]);
 
   // Fetch ultra-concise direct word translations for each part of speech
-  // Example: "push (noun)" -> "推、微推", "push (verb)" -> "推、推動"
+  // Uses Google Translate dict mode (dt=bd) which returns multiple meanings grouped by POS
+  let gtDictMap = {}; // { noun: ['推','推動','推力'], verb: ['推','推進'] }
+  try {
+    const dictCtrl = new AbortController();
+    const dictTimeout = setTimeout(() => dictCtrl.abort(), 1500);
+    const dictRes = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=bd&q=${encodeURIComponent(entry.word)}`,
+      { signal: dictCtrl.signal }
+    );
+    clearTimeout(dictTimeout);
+    if (dictRes.ok) {
+      const dictData = await dictRes.json();
+      // dictData[1] = array of [ posString, [term1, term2, ...], ... ]
+      if (dictData && dictData[1]) {
+        for (const group of dictData[1]) {
+          const pos = (group[0] || '').toLowerCase().trim();
+          const terms = (group[1] || []).filter(Boolean);
+          if (pos && terms.length) {
+            gtDictMap[pos] = terms;
+          }
+        }
+      }
+    }
+  } catch {
+    // Fallback below
+  }
+
+  // Map POS names (e.g. "noun" -> "noun", "verb" -> "verb")
   const posCompactParts = [];
   for (const p of definitions) {
-    let posZh = '';
-    try {
-      const res = await translateToZh(`${entry.word} (${p.pos})`);
-      if (res && res !== entry.word) {
-        posZh = res
-          .replace(/（[^）]*）/g, '')
-          .replace(/\([^)]*\)/g, '')
-          .split(/[；;\s。]/)
-          .filter(Boolean)
-          .slice(0, 2)
-          .join('、');
-      }
-    } catch {
-      // Fallback
-    }
-
-    if (!posZh || posZh === entry.word) {
+    const posKey = (p.pos || '').toLowerCase().trim();
+    let terms = gtDictMap[posKey] || [];
+    // Filter out overly long terms (keep concise single-word / two-char terms)
+    terms = terms.filter((t) => t.length <= 6);
+    let posZh = terms.slice(0, 3).join('、');
+    if (!posZh) {
       posZh = zhWordTr;
     }
     posCompactParts.push(`${p.pos}. ${posZh}`);
