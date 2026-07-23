@@ -1778,10 +1778,10 @@ async function translateToZh(text) {
   if (!text || !text.trim()) return '';
   const query = encodeURIComponent(text.trim());
 
-  // 1. Try Google Translate Client Endpoint (Instant & High Rate Limit)
+  // 1. Try Google Translate Public Web Endpoint (JSONP/Cors safe)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${query}`, {
       signal: controller.signal,
     });
@@ -1794,13 +1794,13 @@ async function translateToZh(text) {
       }
     }
   } catch {
-    // Fallthrough to secondary translation service
+    // Continue fallback
   }
 
-  // 2. Fallback to MyMemory API
+  // 2. Try MyMemory Translation API
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(`https://api.mymemory.translated.net/get?q=${query}&langpair=en|zh-TW`, {
       signal: controller.signal,
     });
@@ -1812,7 +1812,7 @@ async function translateToZh(text) {
       }
     }
   } catch {
-    // Fallback to original text
+    // Continue fallback
   }
 
   return text;
