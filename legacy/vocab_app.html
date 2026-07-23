@@ -1857,24 +1857,26 @@ async function callDictAPI(word) {
     })),
   }));
 
-  // Parallel non-blocking translations
+  // Parallel non-blocking translations with strict timeout to prevent infinite spinner
   const translatePromises = [];
 
   for (const m of definitions) {
     for (const d of m.defs) {
       if (d.def) {
-        translatePromises.push(translateToZh(d.def).then((tr) => (d.defZh = tr)));
+        translatePromises.push(translateToZh(d.def).then((tr) => (d.defZh = tr)).catch(() => {}));
       }
       if (d.ex) {
-        translatePromises.push(translateToZh(d.ex).then((tr) => (d.exZh = tr)));
+        translatePromises.push(translateToZh(d.ex).then((tr) => (d.exZh = tr)).catch(() => {}));
       }
     }
   }
 
   let zhWordTr = entry.word;
-  translatePromises.push(translateToZh(entry.word).then((tr) => (zhWordTr = tr)));
+  translatePromises.push(translateToZh(entry.word).then((tr) => (zhWordTr = tr)).catch(() => {}));
 
-  await Promise.allSettled(translatePromises);
+  // Force resolution within 2.5 seconds max
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2500));
+  await Promise.race([Promise.allSettled(translatePromises), timeoutPromise]);
 
   const topDefZh = definitions[0]?.defs[0]?.defZh || definitions[0]?.defs[0]?.def || '';
   const compactList = `${definitions[0]?.pos || ''}. ${zhWordTr}${topDefZh ? ` — ${topDefZh}` : ''}`;
