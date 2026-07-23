@@ -1673,12 +1673,21 @@ async function callDictAPI(word) {
     })),
   }));
 
+  // Translate all definitions and examples for each part of speech into Chinese
+  for (const m of definitions) {
+    for (const d of m.defs) {
+      if (d.def) {
+        d.defZh = await translateToZh(d.def);
+      }
+      if (d.ex) {
+        d.exZh = await translateToZh(d.ex);
+      }
+    }
+  }
+
   // Fetch Chinese translation for the headword
   const zhWordTr = await translateToZh(entry.word);
-
-  // Translate top definition into Chinese
-  const topDefEn = definitions[0]?.defs[0]?.def || '';
-  const topDefZh = topDefEn ? await translateToZh(topDefEn) : '';
+  const topDefZh = definitions[0]?.defs[0]?.defZh || '';
 
   // Collect up to 2 example sentences and translate them to Chinese
   const rawExamples = [];
@@ -1744,7 +1753,8 @@ function renderLookupResult(data){
         <span class="def-num">${i+1}</span>
         <div>
           <div class="def-text"><strong style="color:var(--accent2)">${escHtml(m.def)}</strong></div>
-          ${m.ex?`<div class="def-example">${escHtml(m.ex)}</div>`:''}
+          ${m.defZh?`<div style="color:var(--accent);font-size:.85rem;margin-top:2px">↳ ${escHtml(m.defZh)}</div>`:''}
+          ${m.ex?`<div class="def-example">${escHtml(m.ex)}${m.exZh?`<br><span style="color:var(--text)">↳ ${escHtml(m.exZh)}</span>`:''}</div>`:''}
         </div>
       </div>`).join('');
     return `<div class="pos-block"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
