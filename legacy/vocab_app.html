@@ -1980,9 +1980,10 @@ function setLookupLoading(on){
 function renderLookupResult(data){
   pendingLookupData = data;
 
-  document.getElementById('lr-word').textContent = data.word;
-  document.getElementById('lr-phonetic').textContent = data.phonetic||'';
-  document.getElementById('lr-zh-tr').textContent = data.zhWordTr || data.word;
+  const lrWord = document.getElementById('lr-word');
+  if (lrWord) lrWord.textContent = data.word;
+  const lrPhonetic = document.getElementById('lr-phonetic');
+  if (lrPhonetic) lrPhonetic.textContent = data.phonetic||'';
 
   // Definitions
   const defs = document.getElementById('lr-definitions');
