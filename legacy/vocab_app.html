@@ -645,6 +645,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
           <div class="lookup-section-title">詞形變化</div>
           <div class="forms-row" id="lr-forms"></div>
         </div>
+        <div class="lookup-section" id="lr-synonyms-section" style="display:none">
+          <div class="lookup-section-title" style="color:var(--accent3)">近義詞 Synonyms</div>
+          <div class="forms-row" id="lr-synonyms"></div>
+        </div>
+        <div class="lookup-section" id="lr-antonyms-section" style="display:none">
+          <div class="lookup-section-title" style="color:var(--accent2)">反義詞 Antonyms</div>
+          <div class="forms-row" id="lr-antonyms"></div>
+        </div>
         <div class="lookup-card-preview">
           <div class="lookup-card-preview-title">✦ 將加入單字庫的資料</div>
           <div class="preview-field"><span class="preview-field-label">單字</span><span class="preview-field-val" id="pr-word" style="font-family:'Space Mono',monospace;color:var(--accent)"></span></div>
@@ -1955,6 +1963,30 @@ function renderLookupResult(data){
     formsSection.style.display='';
   } else {
     formsSection.style.display='none';
+  }
+
+  // Synonyms
+  const synSection = document.getElementById('lr-synonyms-section');
+  const synEl = document.getElementById('lr-synonyms');
+  if (data.synonyms && data.synonyms.length) {
+    synEl.innerHTML = data.synonyms.map(s =>
+      `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(s.replace(/'/g, "\\'"))}')">${escHtml(s)}</span>`
+    ).join('');
+    synSection.style.display = '';
+  } else {
+    synSection.style.display = 'none';
+  }
+
+  // Antonyms
+  const antSection = document.getElementById('lr-antonyms-section');
+  const antEl = document.getElementById('lr-antonyms');
+  if (data.antonyms && data.antonyms.length) {
+    antEl.innerHTML = data.antonyms.map(a =>
+      `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(a.replace(/'/g, "\\'"))}')">${escHtml(a)}</span>`
+    ).join('');
+    antSection.style.display = '';
+  } else {
+    antSection.style.display = 'none';
   }
 
   // Card preview
