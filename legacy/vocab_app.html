@@ -1976,26 +1976,31 @@ async function callDictAPI(word) {
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   await Promise.race([Promise.allSettled(transTasks), timeoutPromise]);
 
-  // Assemble multi-part-of-speech concise translation string (max 2 common terms per POS)
-  // Example: "noun. 指揮棒、接力棒; verb. 擊打"
-  const posCompactParts = definitions.map((p) => {
-    const zhTerms = [];
-    (p.defs || []).forEach((d) => {
-      if (d.defZh) {
-        // Extract concise noun/verb headword meanings from translated definition string
-        const cleanTerm = d.defZh
+  // Fetch ultra-concise direct word translations for each part of speech
+  // Example: "push (noun)" -> "推、微推", "push (verb)" -> "推、推動"
+  const posCompactParts = [];
+  for (const p of definitions) {
+    let posZh = '';
+    try {
+      const res = await translateToZh(`${entry.word} (${p.pos})`);
+      if (res && res !== entry.word) {
+        posZh = res
           .replace(/（[^）]*）/g, '')
           .replace(/\([^)]*\)/g, '')
-          .split(/[；;,\s。]/)[0]
-          .trim();
-        if (cleanTerm && !zhTerms.includes(cleanTerm)) {
-          zhTerms.push(cleanTerm);
-        }
+          .split(/[；;\s。]/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .join('、');
       }
-    });
-    const finalZh = zhTerms.length ? zhTerms.slice(0, 2).join('、') : zhWordTr;
-    return `${p.pos}. ${finalZh}`;
-  });
+    } catch {
+      // Fallback
+    }
+
+    if (!posZh || posZh === entry.word) {
+      posZh = zhWordTr;
+    }
+    posCompactParts.push(`${p.pos}. ${posZh}`);
+  }
 
   const compactList = posCompactParts.length ? posCompactParts.join('; ') : `n/v. ${zhWordTr}`;
 
