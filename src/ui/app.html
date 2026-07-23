@@ -16,6 +16,10 @@
         <p class="subtitle">Daily vocabulary review for stronger recall.</p>
       </div>
       <div class="header-actions">
+        <div class="view-switcher">
+          <button id="studyViewBtn" class="btn btn-ghost active">Study</button>
+          <button id="vocabViewBtn" class="btn btn-ghost">Vocabulary</button>
+        </div>
         <button id="importBtn" class="btn btn-secondary">Import CSV</button>
         <div class="stats-card">
           <span class="stat-label">Today's Review</span>
@@ -27,7 +31,7 @@
   <input id="csvInput" type="file" accept=".csv,text/csv" hidden>
 
   <main class="container">
-    <section class="card-panel">
+    <section id="studyPanel" class="card-panel">
       <div class="card" id="card" aria-live="polite" aria-label="Flashcard">
         <div class="card-inner" id="cardInner">
           <div class="card-face card-front">
@@ -44,7 +48,6 @@
 
       <div class="button-row">
         <button id="prevBtn" class="btn btn-secondary">Previous</button>
-        <button id="flipBtn" class="btn btn-primary">Flip Card</button>
         <button id="nextBtn" class="btn btn-secondary">Next</button>
       </div>
 
@@ -64,6 +67,53 @@
       </div>
 
       <div id="reviewFeedback" class="review-feedback" role="status"></div>
+    </section>
+
+    <section id="vocabPanel" class="workspace-panel hidden">
+      <div class="workspace-header">
+        <div>
+          <h2>Vocabulary Workspace</h2>
+          <p class="subtitle">Search, edit, and manage your word collection.</p>
+        </div>
+      </div>
+
+      <div class="workspace-body">
+        <aside class="vocab-sidebar">
+          <input id="vocabSearch" type="search" class="search-input" placeholder="Search vocabulary...">
+          <button id="addWordBtn" class="btn btn-secondary vocab-add-btn">Add Word</button>
+          <div id="vocabList" class="vocab-list"></div>
+        </aside>
+
+        <div class="vocab-editor">
+          <div class="editor-group">
+            <label>
+              Word <span class="required">*</span>
+              <div class="word-field-row">
+                <input id="editorWord" type="text">
+                <button id="pronounceWordBtn" type="button" class="btn btn-ghost">🔊</button>
+              </div>
+              <span id="lookupStatus" class="lookup-status" aria-live="polite"></span>
+            </label>
+            <label>Phonetic<input id="editorPhonetic" type="text"></label>
+            <label>Meaning <span class="required">*</span><textarea id="editorTranslation"></textarea></label>
+            <label>Example<textarea id="editorExample"></textarea></label>
+            <label>Notes<textarea id="editorNotes"></textarea></label>
+            <label>Tags<input id="editorTags" type="text" placeholder="tag1, tag2"></label>
+          </div>
+
+          <div class="editor-meta">
+            <p><strong>Created</strong> <span id="editorCreated">-</span></p>
+            <p><strong>Updated</strong> <span id="editorUpdated">-</span></p>
+          </div>
+
+          <div class="editor-actions">
+            <button id="saveWordBtn" class="btn btn-primary">Save</button>
+            <button id="deleteWordBtn" class="btn btn-secondary">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="workspaceFeedback" class="review-feedback" role="status"></div>
     </section>
   </main>
 

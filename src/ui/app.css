@@ -23,7 +23,8 @@ h1{margin:.35rem 0 0;font-size:clamp(2.25rem,2.5vw,3.25rem);line-height:1}
 .stat-label{display:block;font-size:.9rem;color:var(--muted);margin-bottom:4px}
 .stats-card strong{display:block;font-size:1.8rem;color:#f8fafc}
 .card-panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:28px;padding:28px;margin-bottom:48px;box-shadow:0 32px 90px rgba(0,0,0,0.18)}
-.card{width:100%;max-width:780px;height:360px;margin:0 auto;perspective:1200px}
+.card{width:100%;max-width:780px;height:360px;margin:0 auto;perspective:1200px;cursor:pointer;transition:transform .2s ease}
+.card:hover{transform:translateY(-2px)}
 .card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .45s ease}
 .card.flipped .card-inner{transform:rotateY(180deg)}
 .card-face{position:absolute;inset:0;border-radius:24px;padding:32px;display:flex;flex-direction:column;justify-content:center;align-items:center;backface-visibility:hidden;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 18px 60px rgba(0,0,0,.2)}
@@ -47,4 +48,32 @@ h1{margin:.35rem 0 0;font-size:clamp(2.25rem,2.5vw,3.25rem);line-height:1}
 .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#60a5fa);transition:width .3s ease}
 .progress-text{font-size:.95rem;color:var(--muted);min-width:140px;text-align:right}
 .review-feedback{margin-top:18px;text-align:center;color:var(--accent);min-height:22px;font-weight:600}
+.hidden{display:none !important}
+.view-switcher{display:flex;gap:8px}
+.btn.active{background:rgba(255,255,255,0.12);box-shadow:0 10px 20px rgba(0,0,0,.15)}
+.workspace-panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:28px;padding:28px;margin-bottom:48px;box-shadow:0 32px 90px rgba(0,0,0,0.18)}
+.workspace-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.workspace-body{display:grid;grid-template-columns:minmax(280px,30%) minmax(0,70%);gap:24px}
+.vocab-sidebar{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:16px;}
+.search-input{width:100%;padding:12px 14px;border:none;border-radius:14px;background:rgba(255,255,255,0.06);color:var(--text);margin-bottom:8px}
+.vocab-add-btn{width:100%;justify-content:center}
+.required{color:var(--accent);margin-left:4px;font-weight:600}
+.search-input:focus{outline:none;box-shadow:0 0 0 4px rgba(125,211,252,0.16)}
+.vocab-list{display:grid;gap:10px;max-height:560px;overflow:auto;padding-right:4px}
+.vocab-item{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;color:var(--text);text-align:left;cursor:pointer}
+.vocab-item.selected{border-color:var(--accent);background:rgba(125,211,252,0.12)}
+.vocab-word{font-weight:700}
+.vocab-meta{font-size:.95rem;color:var(--muted)}
+.vocab-empty{padding:18px;color:var(--muted)}
+.vocab-editor{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.editor-group{display:grid;grid-template-columns:1fr;gap:16px}
+.editor-group label{display:flex;flex-direction:column;gap:8px;font-size:.95rem;color:var(--muted)}
+.word-field-row{display:flex;align-items:center;gap:8px}
+.word-field-row input{flex:1}
+.lookup-status{margin-top:4px;font-size:.85rem;color:var(--accent);min-height:18px}
+.editor-group input,.editor-group textarea{width:100%;padding:12px 14px;border:none;border-radius:14px;background:rgba(255,255,255,0.06);color:var(--text);resize:vertical}
+.editor-group textarea{min-height:80px}
+.editor-meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:.95rem}
+.editor-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width:920px){.workspace-body{grid-template-columns:1fr}.vocab-sidebar{max-height:340px;overflow:auto}}
 @media (max-width:720px){.review-actions{flex-direction:column}.review-actions .btn-ghost{width:100%}.footer-row{flex-direction:column;align-items:flex-start}.progress-text{text-align:left}}

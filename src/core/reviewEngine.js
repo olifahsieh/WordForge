@@ -1,4 +1,4 @@
-import { loadVocabulary } from '../ui/vocabRepository.js';
+import { loadVocabulary } from '../services/storageService.js';
 
 const REVIEW_STORAGE_KEY = 'wf_review_schedule';
 
@@ -6,15 +6,8 @@ const INTERVALS = {
   again: 10 * 60 * 1000,
   hard: 4 * 60 * 60 * 1000,
   good: 24 * 60 * 60 * 1000,
-  easy: 3 * 24 * 60 * 60 * 1000
+  easy: 3 * 24 * 60 * 60 * 1000,
 };
-
-function normalizeWordId(word) {
-  return String(word || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-}
 
 function loadSchedule() {
   const saved = localStorage.getItem(REVIEW_STORAGE_KEY);
@@ -40,29 +33,29 @@ function getDueWords() {
   if (!vocabulary.length) return [];
 
   return vocabulary
-    .map(item => {
-      const id = normalizeWordId(item.word);
-      const entry = schedule[id];
+    .map((item) => {
+      const entry = schedule[item.id];
       return {
-        id,
+        id: item.id,
         word: item.word,
         phonetic: item.phonetic,
         translation: item.translation,
         nextReview: entry?.nextReview ?? 0,
-        lastRating: entry?.lastRating ?? null
+        lastRating: entry?.lastRating ?? null,
       };
     })
-    .filter(item => !item.nextReview || item.nextReview <= now);
+    .filter((item) => !item.nextReview || item.nextReview <= now);
 }
 
 function scheduleWord(wordId, rating) {
+  if (!wordId || !rating || !INTERVALS[rating]) return;
   const schedule = loadSchedule();
   const interval = INTERVALS[rating];
   const nextReview = Date.now() + interval;
 
   schedule[wordId] = {
     nextReview,
-    lastRating: rating
+    lastRating: rating,
   };
 
   saveSchedule(schedule);

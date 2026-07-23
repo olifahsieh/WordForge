@@ -1,0 +1,12 @@
+{
+  "name": "wordforge",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx -y vite src/ui --open"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
