@@ -2090,8 +2090,8 @@ function renderLookupResult(data){
         <span class="def-num">${i+1}</span>
         <div>
           <div class="def-text"><strong style="color:var(--text);font-size:.95rem">${escHtml(m.def)}</strong></div>
-          ${m.defZh?`<div style="color:var(--accent);font-size:1.1rem;font-weight:700;margin-top:4px;line-height:1.5">↳ ${escHtml(m.defZh)}</div>`:''}
-          ${m.ex?`<div class="def-example" style="margin-top:6px;font-size:.82rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh?`<br><span style="color:var(--text);font-size:.8rem">↳ ${escHtml(m.exZh)}</span>`:''}</div>`:''}
+          ${m.defZh?`<div style="color:var(--muted);font-size:.85rem;margin-top:3px;line-height:1.4">${escHtml(m.defZh)}</div>`:''}
+          ${m.ex?`<div class="def-example" style="margin-top:6px;font-size:.82rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh?`<br><span style="color:var(--muted);font-size:.8rem">${escHtml(m.exZh)}</span>`:''}</div>`:''}
         </div>
       </div>`).join('');
     return `<div class="pos-block" style="margin-bottom:18px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
