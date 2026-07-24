@@ -570,9 +570,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     <div class="srs-queue-header">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span class="srs-queue-title">✦ 今日複習佇列</span>
-        <div style="display:flex;gap:4px">
-          <button class="group-pill active" id="srs-filter-all" onclick="setSRSFilter('all')">全字庫</button>
-          <button class="group-pill" id="srs-filter-group" onclick="setSRSFilter('group')">當前字組</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="group-pill active" id="srs-filter-memory" onclick="setSRSFilter('memory')">🧠 記憶字庫 (跨資料夾)</button>
+          <button class="group-pill" id="srs-filter-dataset" onclick="setSRSFilter('dataset')">📁 本單字集</button>
+          <button class="group-pill" id="srs-filter-group" onclick="setSRSFilter('group')">🎯 當前字組</button>
         </div>
       </div>
       <button class="srs-start-btn" id="srsStartBtn" onclick="startSRSSession()">開始複習</button>
@@ -1558,11 +1559,28 @@ function showDictResult(){
 // ═══════════════════════════════════════
 //  SRS — 記憶曲線
 // ═══════════════════════════════════════
-let srsFilterMode = 'all';
+let srsFilterMode = 'memory';
+
+function getAllGlobalWords() {
+  const map = new Map();
+  if (window.IELTS_DATASETS && Array.isArray(window.IELTS_DATASETS)) {
+    window.IELTS_DATASETS.forEach(ds => {
+      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), w));
+    });
+  }
+  if (datasets && Array.isArray(datasets)) {
+    datasets.forEach(ds => {
+      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), w));
+    });
+  }
+  WORDS.forEach(w => map.set(w.word.toLowerCase(), w));
+  return Array.from(map.values());
+}
 
 function setSRSFilter(mode){
   srsFilterMode = mode;
-  document.getElementById('srs-filter-all').classList.toggle('active', mode==='all');
+  document.getElementById('srs-filter-memory').classList.toggle('active', mode==='memory');
+  document.getElementById('srs-filter-dataset').classList.toggle('active', mode==='dataset');
   document.getElementById('srs-filter-group').classList.toggle('active', mode==='group');
   document.getElementById('srs-group-banner').style.display = (mode==='group') ? 'block' : 'none';
   renderSRS();
@@ -1575,33 +1593,54 @@ function selectSRSGroup(idx){
 
 function getDueWords(){
   const today=todayStr();
-  const baseList = (srsFilterMode==='group') ? getActiveGroup() : WORDS;
-  return baseList.filter(w=>{
-    const lvl=getMastery(w.word);
-    if(lvl<0) return true;
-    return !srsMap[w.word]||srsMap[w.word]<=today;
+  let baseList;
+  if (srsFilterMode === 'memory') {
+    const all = getAllGlobalWords();
+    baseList = all.filter(w => getMastery(w.word) >= 0);
+  } else if (srsFilterMode === 'group') {
+    baseList = getActiveGroup();
+  } else {
+    baseList = WORDS;
+  }
+
+  return baseList.filter(w => {
+    const lvl = getMastery(w.word);
+    if (lvl < 0) return (srsFilterMode !== 'memory');
+    return !srsMap[w.word] || srsMap[w.word] <= today;
   });
 }
+
 function renderSRS(){
   if(srsFilterMode==='group') renderGrpBanner('srs-group-banner', 'selectSRSGroup');
   const due=getDueWords(), today=todayStr();
-  const baseList = (srsFilterMode==='group') ? getActiveGroup() : WORDS;
+  let baseList;
+  if (srsFilterMode === 'memory') {
+    const all = getAllGlobalWords();
+    baseList = all.filter(w => getMastery(w.word) >= 0);
+  } else if (srsFilterMode === 'group') {
+    baseList = getActiveGroup();
+  } else {
+    baseList = WORDS;
+  }
+
   const l0=baseList.filter(w=>getMastery(w.word)===0).length;
   const l1=baseList.filter(w=>getMastery(w.word)===1).length;
   const l2=baseList.filter(w=>getMastery(w.word)===2).length;
   const unseen=baseList.filter(w=>getMastery(w.word)<0).length;
+
   document.getElementById('srsStats').innerHTML=`
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--accent)">${due.length}</div><div class="srs-stat-label">今日待複習</div></div>
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl0)">${l0}</div><div class="srs-stat-label">不熟</div></div>
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl1)">${l1}</div><div class="srs-stat-label">稍懂</div></div>
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl2)">${l2}</div><div class="srs-stat-label">已懂</div></div>
-    <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--muted)">${unseen}</div><div class="srs-stat-label">未接觸</div></div>`;
+    ${srsFilterMode !== 'memory' ? `<div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--muted)">${unseen}</div><div class="srs-stat-label">未接觸</div></div>` : `<div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--muted)">${baseList.length}</div><div class="srs-stat-label">記憶總數</div></div>`}`;
+  
   const btn=document.getElementById('srsStartBtn');
   btn.disabled=due.length===0;
   btn.textContent=due.length?`開始複習 (${due.length})`:'今日完成 ✓';
   const sorted=[...due].sort((a,b)=>(srsMap[a.word]||'').localeCompare(srsMap[b.word]||''));
   const list=document.getElementById('srsList');
-  if(!sorted.length){ list.innerHTML='<div class="empty-state">🎉 今日所有單字皆已複習！</div>'; }
+  if(!sorted.length){ list.innerHTML='<div class="empty-state">🎉 所選範圍內今日所有單字皆已複習！</div>'; }
   else list.innerHTML=sorted.slice(0,40).map(w=>{
     const lvl=getMastery(w.word);
     const isOD=srsMap[w.word]&&srsMap[w.word]<today;
