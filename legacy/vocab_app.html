@@ -783,6 +783,40 @@ function saveAll(){
   }
 }
 
+function isBuiltin(id) {
+  return id === 'builtin' || String(id).startsWith('ielts_');
+}
+
+function ensureEditableDataset(actionName = '編輯') {
+  if (isBuiltin(activeDatasetId)) {
+    let baseName = '內建字庫';
+    if (window.IELTS_DATASETS) {
+      const found = window.IELTS_DATASETS.find(d => d.id === activeDatasetId);
+      if (found) baseName = found.name;
+    }
+    const newDs = {
+      id: 'ds_' + Date.now(),
+      name: `${baseName} (已編輯)`,
+      date: getTodayDate(),
+      count: WORDS.length,
+      words: [...WORDS]
+    };
+    datasets.unshift(newDs);
+    activeDatasetId = newDs.id;
+    showToast(`💡 已自動將字庫轉為「自訂字庫」以永久儲存您的${actionName}！`);
+  }
+}
+
+function saveWordsToActive() {
+  if (!isBuiltin(activeDatasetId)) {
+    const ds = datasets.find(d => d.id === activeDatasetId);
+    if (ds) {
+      ds.words = [...WORDS];
+      ds.count = WORDS.length;
+    }
+  }
+}
+
 window.loadFromCloud = async function() {
   if (!window.fbUser || !window.fbDb || !window.fbGetDoc || !window.fbDoc) return;
   try {
@@ -1646,7 +1680,9 @@ async function addWordFromModal(wordStr) {
       examples: data.examples || [],
       date: getTodayDate(),
     };
+    ensureEditableDataset('新增單字');
     WORDS.push(entry);
+    saveWordsToActive();
     localStorage.removeItem('wf_group_order');
     buildGroups();
     saveAll();
@@ -2233,28 +2269,9 @@ function confirmAddWord(){
   if(exists){
     showToast(`「${entry.word}」已在單字庫中`);
   } else {
+    ensureEditableDataset('新增單字');
     WORDS.push(entry);
-
-    // 必須將新單字存入 datasets，否則重整會遺失
-    if(activeDatasetId === 'builtin'){
-      // 如果目前是內建字庫，新增單字時自動轉存為一個新的自訂字庫
-      const newDs = {
-        id: 'ds_' + Date.now(),
-        name: '我的自訂字庫',
-        date: getTodayDate(),
-        count: WORDS.length,
-        words: [...WORDS]
-      };
-      datasets.unshift(newDs);
-      activeDatasetId = newDs.id;
-    } else {
-      // 否則更新目前的字庫
-      const ds = datasets.find(d=>d.id===activeDatasetId);
-      if(ds) {
-        ds.words = [...WORDS];
-        ds.count = WORDS.length;
-      }
-    }
+    saveWordsToActive();
 
     // Rebuild groups to include new word
     localStorage.removeItem('wf_group_order');
@@ -2296,6 +2313,8 @@ async function runBatch(){
   document.getElementById('addedList').innerHTML = '';
   const prog = document.getElementById('batchProgress');
 
+  ensureEditableDataset('批量加入單字');
+
   let ok=0, skip=0;
   for(let i=0;i<words.length;i++){
     const w = words[i];
@@ -2314,6 +2333,9 @@ async function runBatch(){
     // small delay to avoid rate limiting
     if(i<words.length-1) await new Promise(r=>setTimeout(r,600));
   }
+
+  saveWordsToActive();
+  saveAll();
 
   // Rebuild groups
   localStorage.removeItem('wf_group_order');
