@@ -377,6 +377,15 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 <!-- FLASHCARD -->
 <div class="section active" id="sec-flashcard">
   <div class="card-area">
+    <!-- group banner -->
+    <div id="fc-group-banner"></div>
+    <div class="group-complete" id="fc-group-complete">
+      <div class="group-complete-icon">🎉</div>
+      <div class="group-complete-title">第 <span id="fc-complete-gnum"></span> 組全部已懂！</div>
+      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
+      <button class="group-next-btn" id="fc-next-group-btn" onclick="fcNextGroup()">繼續下一組 →</button>
+    </div>
+
     <div class="flashcard" id="flashcard" onclick="flipCard()">
       <div class="card-inner">
         <div class="card-face card-front">
@@ -402,8 +411,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     </div>
     <div class="shuffle-row">
       <button class="shuffle-btn" onclick="shuffleCards()">⇌ 洗牌</button>
-      <button class="shuffle-btn" onclick="filterByLevel(0)">只練不熟</button>
-      <button class="shuffle-btn" onclick="filterByLevel(1)">加入稍懂</button>
+      <button class="shuffle-btn" onclick="filterByLevel(0)">只練本組不熟</button>
+      <button class="shuffle-btn" onclick="practiceAllWords()">🌐 全字庫練習</button>
     </div>
   </div>
 </div>
@@ -556,9 +565,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 <!-- SRS -->
 <div class="section" id="sec-srs">
   <div class="srs-area">
+    <div id="srs-group-banner" style="display:none"></div>
     <div class="srs-top" id="srsStats"></div>
     <div class="srs-queue-header">
-      <span class="srs-queue-title">✦ 今日複習佇列</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="srs-queue-title">✦ 今日複習佇列</span>
+        <div style="display:flex;gap:4px">
+          <button class="group-pill active" id="srs-filter-all" onclick="setSRSFilter('all')">全字庫</button>
+          <button class="group-pill" id="srs-filter-group" onclick="setSRSFilter('group')">當前字組</button>
+        </div>
+      </div>
       <button class="srs-start-btn" id="srsStartBtn" onclick="startSRSSession()">開始複習</button>
     </div>
     <div class="srs-list" id="srsList"></div>
@@ -1028,14 +1044,46 @@ function speakCurrent(rate = 0.88) {
 }
 
 // ═══════════════════════════════════════
-//  FLASHCARD  (uses full WORDS, not grouped)
+//  FLASHCARD — GROUP-BASED (25 words per group)
 // ═══════════════════════════════════════
 let fcDeck=[],fcIndex=0;
-function initFlashcard(){
-  fcDeck=shuffle([...WORDS]); fcIndex=0; showFCCard();
+
+function selectFCGroup(idx){
+  setActiveGrp(idx);
+  initFlashcard();
 }
+function fcNextGroup(){
+  if(activeGrpIdx < wordGroups.length - 1){
+    setActiveGrp(activeGrpIdx + 1);
+    initFlashcard();
+  }
+}
+
+function initFlashcard(overrideDeck = null){
+  renderGrpBanner('fc-group-banner', 'selectFCGroup');
+  const compDiv = document.getElementById('fc-group-complete');
+  if (compDiv) compDiv.classList.remove('show');
+  checkShowGroupDone('fc-group-complete', 'fc-complete-gnum', 'fc-next-group-btn');
+
+  if (overrideDeck) {
+    fcDeck = overrideDeck;
+  } else {
+    const grp = getActiveGroup();
+    fcDeck = grp.length ? shuffle([...grp]) : shuffle([...WORDS]);
+  }
+  fcIndex = 0;
+  showFCCard();
+}
+
 function showFCCard(){
-  if(!fcDeck.length) return;
+  if(!fcDeck.length){
+    document.getElementById('fc-word').textContent = "（本組暫無單字）";
+    document.getElementById('fc-phonetic').textContent = "";
+    document.getElementById('fc-word-back').textContent = "（本組暫無單字）";
+    document.getElementById('fc-translation').textContent = "請選擇其他字組";
+    document.getElementById('fc-counter').textContent = "0 / 0";
+    return;
+  }
   const c=fcDeck[fcIndex]; _currentWord=c.word;
   document.getElementById('fc-word').textContent=c.word;
   document.getElementById('fc-phonetic').textContent=c.phonetic;
@@ -1062,22 +1110,46 @@ function showFCCard(){
   document.getElementById('fc-counter').textContent=`${fcIndex+1} / ${fcDeck.length}`;
   document.getElementById('flashcard').classList.remove('flipped');
 }
+
 function flipCard(){ document.getElementById('flashcard').classList.toggle('flipped'); }
+
 function markCard(lvl){
+  if(!fcDeck.length) return;
   const c=fcDeck[fcIndex]; setMastery(c.word,lvl);
   if(lvl===2) streak++; else if(lvl===0) streak=0;
   saveAll();
   showToast(['↺ 不熟 — 1天後複習','△ 稍懂 — 3天後複習','✓ 已懂 — 7天後複習'][lvl]);
+
+  renderGrpBanner('fc-group-banner', 'selectFCGroup');
+  if (checkShowGroupDone('fc-group-complete', 'fc-complete-gnum', 'fc-next-group-btn')) {
+    showToast('🎉 本組 25 個單字全部已懂！');
+  }
+
   fcIndex=(fcIndex+1)%fcDeck.length;
   if(fcIndex===0) showToast('🎉 本輪完成！');
   showFCCard();
 }
-function shuffleCards(){ fcDeck=shuffle([...WORDS]); fcIndex=0; showFCCard(); showToast('⇌ 已洗牌'); }
+
+function shuffleCards(){
+  const grp = getActiveGroup();
+  fcDeck = shuffle(grp.length ? [...grp] : [...WORDS]);
+  fcIndex = 0;
+  showFCCard();
+  showToast('⇌ 已洗牌');
+}
+
 function filterByLevel(maxLvl){
-  const pool=WORDS.filter(w=>{const l=getMastery(w.word);return l<0||l<=maxLvl;});
-  if(!pool.length){ showToast('🎉 全部學完！'); return; }
+  const pool = getActiveGroup().filter(w=>{const l=getMastery(w.word);return l<0||l<=maxLvl;});
+  if(!pool.length){ showToast('🎉 本組符合條件的單字已全部學完！'); return; }
   fcDeck=shuffle(pool); fcIndex=0; showFCCard();
-  showToast(`↺ 練習 ${pool.length} 個單字`);
+  showToast(`↺ 本組練習 ${pool.length} 個單字`);
+}
+
+function practiceAllWords(){
+  const pool = [...WORDS];
+  if(!pool.length){ showToast('無單字可練習'); return; }
+  fcDeck = shuffle(pool); fcIndex = 0; showFCCard();
+  showToast(`🌐 切換為全字庫練習 (${pool.length} 字)`);
 }
 
 // ═══════════════════════════════════════
@@ -1486,20 +1558,38 @@ function showDictResult(){
 // ═══════════════════════════════════════
 //  SRS — 記憶曲線
 // ═══════════════════════════════════════
+let srsFilterMode = 'all';
+
+function setSRSFilter(mode){
+  srsFilterMode = mode;
+  document.getElementById('srs-filter-all').classList.toggle('active', mode==='all');
+  document.getElementById('srs-filter-group').classList.toggle('active', mode==='group');
+  document.getElementById('srs-group-banner').style.display = (mode==='group') ? 'block' : 'none';
+  renderSRS();
+}
+
+function selectSRSGroup(idx){
+  setActiveGrp(idx);
+  renderSRS();
+}
+
 function getDueWords(){
   const today=todayStr();
-  return WORDS.filter(w=>{
+  const baseList = (srsFilterMode==='group') ? getActiveGroup() : WORDS;
+  return baseList.filter(w=>{
     const lvl=getMastery(w.word);
     if(lvl<0) return true;
     return !srsMap[w.word]||srsMap[w.word]<=today;
   });
 }
 function renderSRS(){
+  if(srsFilterMode==='group') renderGrpBanner('srs-group-banner', 'selectSRSGroup');
   const due=getDueWords(), today=todayStr();
-  const l0=WORDS.filter(w=>getMastery(w.word)===0).length;
-  const l1=WORDS.filter(w=>getMastery(w.word)===1).length;
-  const l2=WORDS.filter(w=>getMastery(w.word)===2).length;
-  const unseen=WORDS.filter(w=>getMastery(w.word)<0).length;
+  const baseList = (srsFilterMode==='group') ? getActiveGroup() : WORDS;
+  const l0=baseList.filter(w=>getMastery(w.word)===0).length;
+  const l1=baseList.filter(w=>getMastery(w.word)===1).length;
+  const l2=baseList.filter(w=>getMastery(w.word)===2).length;
+  const unseen=baseList.filter(w=>getMastery(w.word)<0).length;
   document.getElementById('srsStats').innerHTML=`
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--accent)">${due.length}</div><div class="srs-stat-label">今日待複習</div></div>
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl0)">${l0}</div><div class="srs-stat-label">不熟</div></div>
