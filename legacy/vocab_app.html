@@ -2097,10 +2097,213 @@ function deleteDataset(id){
   if(activeDatasetId===id){ 
     if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) loadDataset(window.IELTS_DATASETS[0].id);
     else WORDS.length=0; 
-    return; 
   }
   saveAll(); renderDatasetsList(); showToast('已刪除單字集');
 }
+
+async function callDictAPI(word) {
+  const query = encodeURIComponent(word.trim());
+
+  // Run all primary API requests IN PARALLEL for maximum speed (< 800ms)
+  const [freeDictResult, gtDictResult, datamuseResult] = await Promise.allSettled([
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${query}`).then(r => r.ok ? r.json() : null),
+    fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=bd&dt=t&dt=ex&q=${query}`).then(r => r.ok ? r.json() : null),
+    fetch(`https://api.datamuse.com/words?ml=${query}&max=6`).then(r => r.ok ? r.json() : null)
+  ]);
+
+  const freeDictData = freeDictResult.status === 'fulfilled' ? freeDictResult.value : null;
+  const gtData = gtDictResult.status === 'fulfilled' ? gtDictResult.value : null;
+  const dmData = datamuseResult.status === 'fulfilled' ? datamuseResult.value : null;
+
+  // Extract Google Translate Dictionary Map & Primary Translation
+  let gtPrimaryTr = '';
+  let gtDictMap = {}; // { noun: ['復原力', '彈性'], verb: ... }
+  if (gtData) {
+    if (gtData[0] && gtData[0][0] && gtData[0][0][0]) {
+      gtPrimaryTr = gtData[0][0][0].trim();
+    }
+    if (gtData[1] && Array.isArray(gtData[1])) {
+      for (const group of gtData[1]) {
+        const pos = (group[0] || '').toLowerCase().trim();
+        const terms = (group[1] || []).filter(Boolean);
+        if (pos && terms.length) gtDictMap[pos] = terms;
+      }
+    }
+  }
+
+  // Headword primary Chinese translation
+  let zhWordTr = gtPrimaryTr;
+  if (!zhWordTr || zhWordTr.toLowerCase() === word.trim().toLowerCase()) {
+    zhWordTr = await translateToZh(word.trim());
+  }
+  if (!zhWordTr) zhWordTr = word.trim();
+
+  // Process FreeDict entry or fallback
+  let entry = Array.isArray(freeDictData) ? freeDictData[0] : null;
+  if (!entry) {
+    entry = {
+      word: word.trim(),
+      phonetics: [{ text: `/${word.trim()}/` }],
+      meanings: []
+    };
+  }
+
+  const phonetic = (entry.phonetics || []).find((p) => p.text && p.text.trim())?.text || entry.phonetic || `/${word.trim()}/`;
+  const audioUrl = (entry.phonetics || []).find((p) => p.audio && p.audio.trim())?.audio || '';
+
+  // Process definitions
+  let definitions = (entry.meanings || []).map((m) => ({
+    pos: m.partOfSpeech || 'definition',
+    defs: (m.definitions || []).slice(0, 2).map((d) => ({
+      def: d.definition || '',
+      ex: d.example || '',
+      defZh: '',
+      exZh: '',
+    })),
+  }));
+
+  // If definitions from FreeDict are empty or generic, generate from gtDictMap
+  if (definitions.length === 0 || (definitions.length === 1 && definitions[0].pos === 'definition')) {
+    definitions = [];
+    Object.keys(gtDictMap).forEach(posKey => {
+      const terms = gtDictMap[posKey];
+      definitions.push({
+        pos: posKey,
+        defs: [{
+          def: `${word.trim()} (${posKey})`,
+          defZh: terms.join('、 '),
+          ex: '',
+          exZh: ''
+        }]
+      });
+    });
+  }
+
+  if (definitions.length === 0) {
+    definitions.push({
+      pos: 'definition',
+      defs: [{ def: word.trim(), defZh: zhWordTr, ex: '', exZh: '' }]
+    });
+  }
+
+  // Ensure defZh is populated
+  definitions.forEach(pos => {
+    pos.defs.forEach(d => {
+      if (!d.defZh) {
+        const terms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
+        d.defZh = terms.length ? terms.join('、 ') : zhWordTr;
+      }
+    });
+  });
+
+  // Extract examples from gtData[13] (Oxford examples) or FreeDict
+  const rawExamples = [];
+  definitions.forEach((d) => {
+    d.defs.forEach((item) => {
+      if (item.ex && item.ex.trim().split(/\s+/).length >= 3) {
+        rawExamples.push({ en: item.ex.trim(), zh: '' });
+      }
+    });
+  });
+
+  if (gtData && gtData[13] && Array.isArray(gtData[13])) {
+    for (const group of gtData[13]) {
+      if (Array.isArray(group)) {
+        for (const item of group) {
+          if (item && Array.isArray(item) && item[0]) {
+            const cleanEn = item[0].replace(/<[^>]+>/g, '').trim();
+            if (cleanEn && cleanEn.split(/\s+/).length >= 3 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
+              const formattedEn = cleanEn.charAt(0).toUpperCase() + cleanEn.slice(1);
+              rawExamples.push({ en: formattedEn, zh: '' });
+              if (rawExamples.length >= 2) break;
+            }
+          }
+        }
+      }
+      if (rawExamples.length >= 2) break;
+    }
+  }
+
+  // Translate examples
+  for (const exObj of rawExamples) {
+    if (exObj.en && !exObj.zh) {
+      try {
+        exObj.zh = await translateToZh(exObj.en);
+      } catch(e) {
+        exObj.zh = `與「${zhWordTr}」相關的例句`;
+      }
+    }
+  }
+
+  if (rawExamples.length === 0) {
+    let genEn = `Understanding the ${word.trim()} is crucial for academic success.`;
+    let genZh = `理解 ${word.trim()}（${zhWordTr}）對於學術成功至關重要。`;
+    const primaryPos = Object.keys(gtDictMap)[0] || (definitions[0] && definitions[0].pos) || '';
+    if (primaryPos.includes('verb')) {
+      genEn = `Researchers investigate how to ${word.trim()} effective strategy.`;
+      genZh = `研究人員調查如何有效進行${zhWordTr}。`;
+    } else if (primaryPos.includes('adjective')) {
+      genEn = `The finding demonstrates a ${word.trim()} impact on results.`;
+      genZh = `研究結果展示了對結果產生的${zhWordTr}影響。`;
+    }
+    rawExamples.push({ en: genEn, zh: genZh });
+  }
+
+  // Build compact translation string
+  const posZhToEn = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adjective', '副詞': 'adverb', '介詞': 'preposition', '連詞': 'conjunction', '感嘆詞': 'interjection', '代詞': 'pronoun' };
+  const posEnToZh = Object.fromEntries(Object.entries(posZhToEn).map(([k, v]) => [v, k]));
+  const posCompactParts = [];
+  const keys = Object.keys(gtDictMap).length ? Object.keys(gtDictMap) : definitions.map(d=>d.pos);
+
+  keys.forEach(posKey => {
+    const zhKey = posEnToZh[posKey] || posKey;
+    const terms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter(t => t.length <= 6);
+    let posZh = terms.slice(0, 3).join('、');
+    if (!posZh) posZh = zhWordTr;
+    if (posZh) posCompactParts.push(`${posKey}. ${posZh}`);
+  });
+
+  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${zhWordTr}`;
+
+  // Synonyms & Antonyms from Datamuse
+  const synonyms = [];
+  const antonyms = [];
+  if (Array.isArray(dmData)) {
+    dmData.forEach(item => {
+      if (item.word && item.word.toLowerCase() !== word.trim().toLowerCase()) {
+        synonyms.push(item.word);
+      }
+    });
+  }
+
+  // Forms
+  const forms = [];
+  const wordBase = word.trim().toLowerCase();
+  const primaryPos = Object.keys(gtDictMap)[0] || (definitions[0] && definitions[0].pos) || 'noun';
+  if (primaryPos.includes('verb')) {
+    forms.push({ label: 'past tense', value: wordBase.endsWith('e') ? `${wordBase}d` : `${wordBase}ed` });
+    forms.push({ label: 'present participle', value: wordBase.endsWith('e') ? `${wordBase.slice(0, -1)}ing` : `${wordBase}ing` });
+  } else if (primaryPos.includes('noun')) {
+    forms.push({ label: 'plural', value: wordBase.endsWith('y') ? `${wordBase.slice(0, -1)}ies` : `${wordBase}s` });
+  } else if (primaryPos.includes('adjective')) {
+    forms.push({ label: 'noun form', value: wordBase.endsWith('e') ? `${wordBase.slice(0, -1)}ity` : `${wordBase}ness` });
+    forms.push({ label: 'adverb', value: wordBase.endsWith('le') ? `${wordBase.slice(0, -1)}y` : `${wordBase}ly` });
+  }
+
+  return {
+    word: word.trim(),
+    phonetic: phonetic,
+    audioUrl: audioUrl,
+    zhWordTr: zhWordTr,
+    translation_compact: compactList,
+    definitions: definitions,
+    examples: rawExamples,
+    synonyms: synonyms,
+    antonyms: antonyms,
+    forms: forms,
+  };
+}
+
 function loadBuiltin(){
   if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) {
     loadDataset(window.IELTS_DATASETS[0].id);
