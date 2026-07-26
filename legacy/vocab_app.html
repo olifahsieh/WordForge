@@ -2582,6 +2582,8 @@ async function runUpdate(){
   const prog = document.getElementById('updProgress');
   prog.style.color = 'var(--muted)';
 
+  ensureEditableDataset('AI 查詢更新');
+
   let ok=0, fail=0;
   for(let i=0;i<targets.length;i++){
     const w = targets[i];
@@ -2607,13 +2609,10 @@ async function runUpdate(){
     if(i<targets.length-1) await new Promise(r=>setTimeout(r,600));
   }
 
-  // Persist changes: save updated WORDS to active dataset if not builtin
-  if(activeDatasetId !== 'builtin'){
-    const ds = datasets.find(d=>d.id===activeDatasetId);
-    if(ds){ ds.words = [...WORDS]; }
-  }
+  saveWordsToActive();
   saveAll();
   updateHeader();
+  renderDatasetsList();
 
   prog.style.color = ok>0 ? 'var(--success)' : 'var(--danger)';
   prog.textContent = `完成！成功更新 ${ok} 個，失敗 ${fail} 個。`;
