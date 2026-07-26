@@ -1833,15 +1833,18 @@ async function openWordModal(wordStr) {
   let defsHtml = '';
   if (data && data.definitions && data.definitions.length) {
     defsHtml = data.definitions.map(pos => {
-      const items = (pos.defs || []).map((m, i) => `
+      const items = (pos.defs || []).map((m, i) => {
+        const zhDisplay = m.defZh || (data.translation_compact || data.zhWordTr || '');
+        return `
         <div class="def-item" style="margin-bottom:12px">
           <span class="def-num">${i + 1}</span>
           <div>
             <div class="def-text"><strong style="color:var(--text);font-size:.92rem">${escHtml(m.def)}</strong></div>
-            ${m.defZh ? `<div style="color:var(--accent);font-size:.95rem;font-weight:700;margin-top:3px">↳ ${escHtml(m.defZh)}</div>` : ''}
+            ${zhDisplay ? `<div style="color:var(--accent);font-size:.92rem;font-weight:700;margin-top:3px;line-height:1.4">↳ ${escHtml(zhDisplay)}</div>` : ''}
             ${m.ex ? `<div class="def-example" style="margin-top:4px;font-size:.8rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.78rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
       return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
     }).join('');
   }
@@ -2399,16 +2402,20 @@ async function callDictAPI(word) {
     });
   }
 
-  // Datamuse API fallback for Synonyms & Antonyms
-  if (synonyms.length === 0) {
+  // Datamuse API fallback for Synonyms & Related words
+  if (synonyms.length < 3) {
     try {
       const dmCtrl = new AbortController();
       const dmTimeout = setTimeout(() => dmCtrl.abort(), 1200);
-      const dmRes = await fetch(`https://api.datamuse.com/words?rel_syn=${query}&max=6`, { signal: dmCtrl.signal });
+      const dmRes = await fetch(`https://api.datamuse.com/words?ml=${query}&max=6`, { signal: dmCtrl.signal });
       clearTimeout(dmTimeout);
       if (dmRes.ok) {
         const dmData = await dmRes.json();
-        dmData.forEach(item => { if (item.word && !synonyms.includes(item.word)) synonyms.push(item.word); });
+        dmData.forEach(item => {
+          if (item.word && item.word.toLowerCase() !== query.toLowerCase() && !synonyms.includes(item.word)) {
+            synonyms.push(item.word);
+          }
+        });
       }
     } catch(e) {}
   }
@@ -2425,6 +2432,20 @@ async function callDictAPI(word) {
       }
     } catch(e) {}
   }
+
+  // Ensure every def has defZh translated
+  definitions.forEach(pos => {
+    pos.defs.forEach(d => {
+      if (!d.defZh) {
+        const gtTerms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
+        if (gtTerms.length) {
+          d.defZh = gtTerms.join('、 ');
+        } else if (zhWordTr) {
+          d.defZh = zhWordTr;
+        }
+      }
+    });
+  });
 
   // Smart POS Forms fallback
   if (forms.length === 0) {
