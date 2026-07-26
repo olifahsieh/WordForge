@@ -1804,7 +1804,6 @@ async function openWordModal(wordStr) {
   modal.style.display = 'flex';
   body.innerHTML = `<div style="text-align:center;padding:34px;color:var(--muted);font-family:'Space Mono',monospace">🔍 AI 字典載入中…</div>`;
 
-  // Find local word object if present
   const allGlobal = getAllGlobalWords();
   const localItem = allGlobal.find(x => x.word.toLowerCase() === wordStr.toLowerCase());
 
@@ -1812,15 +1811,14 @@ async function openWordModal(wordStr) {
   try {
     data = await callDictAPI(wordStr);
   } catch(e) {
-    console.warn('[WordForge] modal dict API fallback:', e);
+    console.warn('[WordForge] modal dict API error:', e);
   }
 
-  // Construct merged data
   const headword = (data && data.word) || wordStr;
   const phonetic = (data && data.phonetic && data.phonetic !== '--') ? data.phonetic : (localItem?.phonetic || `/${wordStr}/`);
   const translation = (data && data.translation_compact) || (localItem?.translation) || (data && data.zhWordTr) || '--';
 
-  // Examples: prefer data.examples, fallback to localItem.examples
+  // 1. Examples
   const rawEx = (data && data.examples && data.examples.length) ? data.examples : (localItem?.examples || []);
   const exHtml = rawEx.map(ex => `
     <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
@@ -1829,52 +1827,87 @@ async function openWordModal(wordStr) {
     </div>
   `).join('');
 
-  // Definitions
-  let defsHtml = '';
-  if (data && data.definitions && data.definitions.length) {
-    defsHtml = data.definitions.map(pos => {
-      const items = (pos.defs || []).map((m, i) => {
-        const zhDisplay = m.defZh || (data.translation_compact || data.zhWordTr || '');
-        return `
-        <div class="def-item" style="margin-bottom:12px">
-          <span class="def-num">${i + 1}</span>
-          <div>
-            <div class="def-text"><strong style="color:var(--text);font-size:.92rem">${escHtml(m.def)}</strong></div>
-            ${zhDisplay ? `<div style="color:var(--accent);font-size:.92rem;font-weight:700;margin-top:3px;line-height:1.4">↳ ${escHtml(zhDisplay)}</div>` : ''}
-            ${m.ex ? `<div class="def-example" style="margin-top:4px;font-size:.8rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.78rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
-          </div>
-        </div>`;
-      }).join('');
-      return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
-    }).join('');
+  // 2. Definitions (Guaranteed Fallback!)
+  let rawDefs = (data && data.definitions && data.definitions.length) ? data.definitions : [];
+  if (!rawDefs.length && translation !== '--') {
+    const parts = translation.split(';');
+    parts.forEach(part => {
+      const p = part.trim();
+      const match = p.match(/^(noun|verb|adjective|adverb|preposition|conjunction|n|v|adj|adv)\.\s*(.*)/i);
+      if (match) {
+        rawDefs.push({
+          pos: match[1].toLowerCase(),
+          defs: [{ def: `${headword} (${match[1]})`, defZh: match[2], ex: '', exZh: '' }]
+        });
+      } else if (p) {
+        rawDefs.push({
+          pos: 'definition',
+          defs: [{ def: headword, defZh: p, ex: '', exZh: '' }]
+        });
+      }
+    });
   }
 
-  // Synonyms & Antonyms & Forms
-  const synonyms = (data && data.synonyms) || [];
-  const antonyms = (data && data.antonyms) || [];
-  const forms = (data && data.forms) || [];
+  const defsHtml = rawDefs.map(pos => {
+    const items = (pos.defs || []).map((m, i) => {
+      const zhDisplay = m.defZh || translation || '';
+      return `
+      <div class="def-item" style="margin-bottom:12px">
+        <span class="def-num">${i + 1}</span>
+        <div>
+          <div class="def-text"><strong style="color:var(--text);font-size:.92rem">${escHtml(m.def)}</strong></div>
+          ${zhDisplay ? `<div style="color:var(--accent);font-size:.92rem;font-weight:700;margin-top:3px;line-height:1.4">↳ ${escHtml(zhDisplay)}</div>` : ''}
+          ${m.ex ? `<div class="def-example" style="margin-top:4px;font-size:.8rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.78rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
+  }).join('');
 
-  const synonymsHtml = synonyms.length ? `
+  // 3. Forms (Guaranteed Fallback!)
+  let rawForms = (data && data.forms && data.forms.length) ? data.forms : [];
+  if (!rawForms.length) {
+    const wb = headword.toLowerCase();
+    rawForms.push({ label: 'plural', value: wb.endsWith('y') ? `${wb.slice(0, -1)}ies` : `${wb}s` });
+    rawForms.push({ label: 'past tense', value: wb.endsWith('e') ? `${wb}d` : `${wb}ed` });
+    rawForms.push({ label: 'present participle', value: wb.endsWith('e') ? `${wb.slice(0, -1)}ing` : `${wb}ing` });
+  }
+
+  const formsHtml = `
     <div style="margin-top:14px">
-      <strong style="color:var(--accent3);font-size:.78rem;font-family:'Space Mono',monospace">近義詞 Synonyms:</strong>
+      <strong style="color:var(--lvl1);font-size:.78rem;font-family:'Space Mono',monospace">詞形變化 Forms:</strong>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-        ${synonyms.map(s => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer;transition:all .15s" onclick="openWordModal('${escHtml(s.replace(/'/g,"\\'"))}')">${escHtml(s)}</span>`).join('')}
+        ${rawForms.map(f => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(f.value.replace(/'/g,"\\'"))}')">${escHtml(f.label)}: <strong style="color:var(--accent)">${escHtml(f.value)}</strong></span>`).join('')}
+      </div>
+    </div>`;
+
+  // 4. Synonyms & Related Words (Guaranteed Fallback!)
+  let rawSyn = (data && data.synonyms && data.synonyms.length) ? data.synonyms : [];
+  if (!rawSyn.length) {
+    try {
+      const dmRes = await fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(headword)}&max=6`);
+      if (dmRes.ok) {
+        const dmData = await dmRes.json();
+        dmData.forEach(item => { if (item.word && item.word.toLowerCase() !== headword.toLowerCase()) rawSyn.push(item.word); });
+      }
+    } catch(e) {}
+  }
+
+  const synonymsHtml = rawSyn.length ? `
+    <div style="margin-top:14px">
+      <strong style="color:var(--accent3);font-size:.78rem;font-family:'Space Mono',monospace">近義詞 / 相關詞 Synonyms:</strong>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${rawSyn.map(s => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer;transition:all .15s" onclick="openWordModal('${escHtml(s.replace(/'/g,"\\'"))}')">${escHtml(s)}</span>`).join('')}
       </div>
     </div>` : '';
 
+  // 5. Antonyms
+  const antonyms = (data && data.antonyms) || [];
   const antonymsHtml = antonyms.length ? `
     <div style="margin-top:12px">
       <strong style="color:var(--accent2);font-size:.78rem;font-family:'Space Mono',monospace">反義詞 Antonyms:</strong>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
         ${antonyms.map(a => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer;transition:all .15s" onclick="openWordModal('${escHtml(a.replace(/'/g,"\\'"))}')">${escHtml(a)}</span>`).join('')}
-      </div>
-    </div>` : '';
-
-  const formsHtml = forms.length ? `
-    <div style="margin-top:14px">
-      <strong style="color:var(--lvl1);font-size:.78rem;font-family:'Space Mono',monospace">詞形變化 Forms:</strong>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-        ${forms.map(f => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(f.value.replace(/'/g,"\\'"))}')">${escHtml(f.label)}: <strong style="color:var(--accent)">${escHtml(f.value)}</strong></span>`).join('')}
       </div>
     </div>` : '';
 
@@ -2434,17 +2467,19 @@ async function callDictAPI(word) {
   }
 
   // Ensure every def has defZh translated
-  definitions.forEach(pos => {
-    pos.defs.forEach(d => {
-      if (!d.defZh) {
-        const gtTerms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
-        if (gtTerms.length) {
-          d.defZh = gtTerms.join('、 ');
-        } else if (zhWordTr) {
-          d.defZh = zhWordTr;
+  (definitions || []).forEach(pos => {
+    if (pos && pos.defs && Array.isArray(pos.defs)) {
+      pos.defs.forEach(d => {
+        if (d && !d.defZh) {
+          const gtTerms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
+          if (gtTerms.length) {
+            d.defZh = gtTerms.join('、 ');
+          } else if (zhWordTr) {
+            d.defZh = zhWordTr;
+          }
         }
-      }
-    });
+      });
+    }
   });
 
   // Smart POS Forms fallback
