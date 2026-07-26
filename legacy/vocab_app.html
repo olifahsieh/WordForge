@@ -1599,68 +1599,6 @@ function showSentenceResult(){
   if(isGroupDone(activeGrpIdx)) checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
   renderGrpBanner('sentence-group-banner','selectSentenceGroup');
 }
-    dictCorrect++; streak++;
-    document.getElementById('dict-phonetic-reveal').textContent=w.phonetic;
-    const da=document.getElementById('dictAnswer');
-    da.textContent=`✓ ${w.word} — ${w.translation}`; da.style.color='var(--success)';
-    document.getElementById('dictMasteryRow').style.display='flex';
-    dictAnswered=true; saveAll(); updateHeader();
-  } else {
-    inp.className='typing-input wrong-input';
-    dictHint=Math.min(dictHint+1,w.word.length);
-    document.getElementById('dictHint').textContent=hintStr(w.word,dictHint);
-    setTimeout(()=>{ inp.className='typing-input'; inp.value=''; inp.focus(); },300);
-    if(dictHint>=w.word.length){
-      document.getElementById('dictAnswer').textContent=`答案：${w.word}`;
-      inp.disabled=true;
-      document.getElementById('dictMasteryRow').style.display='flex';
-      dictAnswered=true; streak=0; saveAll();
-    }
-  }
-}
-
-function tyShowDictAnswer(){
-  if(dictAnswered||!dictQueue[dictIdx]) return;
-  const w=dictQueue[dictIdx]; dictAnswered=true; streak=0;
-  document.getElementById('dictInput').disabled=true;
-  const da=document.getElementById('dictAnswer');
-  da.textContent=`答案：${w.word} — ${w.translation}`; da.style.color='var(--accent2)';
-  document.getElementById('dict-phonetic-reveal').textContent=w.phonetic;
-  document.getElementById('dictMasteryRow').style.display='flex';
-  setMastery(w.word,0); saveAll(); updateHeader();
-}
-
-function skipDict(){
-  if(dictAnswered) return;
-  const w=dictQueue[dictIdx]; dictAnswered=true; streak=0;
-  document.getElementById('dictInput').disabled=true;
-  document.getElementById('dictAnswer').textContent=`答案：${w.word}`;
-  document.getElementById('dictAnswer').style.color='var(--accent2)';
-  document.getElementById('dict-phonetic-reveal').textContent=w.phonetic;
-  document.getElementById('dictMasteryRow').style.display='flex';
-  saveAll(); updateHeader();
-}
-
-function dictMastery(lvl){
-  if(dictQueue[dictIdx]) setMastery(dictQueue[dictIdx].word,lvl);
-  document.getElementById('dictMasteryRow').style.display='none';
-  renderGrpBanner('dict-group-banner','selectDictGroup');
-  setTimeout(()=>{ dictIdx++; renderDict(); },350);
-}
-
-function showDictResult(){
-  document.getElementById('dictGameArea').style.display='none';
-  const grp=getActiveGroup();
-  const doneCnt=grp.filter(w=>getMastery(w.word)===2).length;
-  const pct=dictQueue.length>0?Math.round(dictCorrect/Math.max(dictQueue.length,1)*100):0;
-  document.getElementById('dictScore').textContent=pct+'%';
-  document.getElementById('dictBreakdown').innerHTML=`
-    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${dictCorrect}</div><div class="rb-label">答對</div></div>
-    <div class="rb-box"><div class="rb-num" style="color:var(--danger)">${dictQueue.length-dictCorrect}</div><div class="rb-label">答錯</div></div>
-    <div class="rb-box"><div class="rb-num">${doneCnt}/${grp.length}</div><div class="rb-label">已懂</div></div>`;
-  document.getElementById('dictResult').classList.add('show');
-  if(isGroupDone(activeGrpIdx)) checkShowGroupDone('dict-group-complete','dict-complete-gnum','dict-next-group-btn');
-}
 
 // ═══════════════════════════════════════
 //  SRS — 記憶曲線
