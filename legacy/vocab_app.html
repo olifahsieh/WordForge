@@ -1802,84 +1802,113 @@ async function openWordModal(wordStr) {
   const modal = document.getElementById('wordDetailModal');
   const body = document.getElementById('wordModalBody');
   modal.style.display = 'flex';
-  body.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>`;
+  body.innerHTML = `<div style="text-align:center;padding:34px;color:var(--muted);font-family:'Space Mono',monospace">🔍 AI 字典載入中…</div>`;
 
+  // Find local word object if present
+  const allGlobal = getAllGlobalWords();
+  const localItem = allGlobal.find(x => x.word.toLowerCase() === wordStr.toLowerCase());
+
+  let data = null;
   try {
-    const data = await callDictAPI(wordStr);
-    const item = WORDS.find((x) => x.word.toLowerCase() === wordStr.toLowerCase());
-
-    const defsHtml = (data.definitions || [])
-      .map((pos) => {
-        const items = (pos.defs || [])
-          .map(
-            (m, i) => `
-          <div class="def-item" style="margin-bottom:14px">
-            <span class="def-num">${i + 1}</span>
-            <div>
-              <div class="def-text"><strong style="color:var(--text);font-size:.95rem">${escHtml(m.def)}</strong></div>
-              ${m.defZh ? `<div style="color:var(--accent);font-size:1.05rem;font-weight:700;margin-top:4px;line-height:1.5">↳ ${escHtml(m.defZh)}</div>` : ''}
-              ${m.ex ? `<div class="def-example" style="margin-top:6px;font-size:.82rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.8rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
-            </div>
-          </div>`,
-          )
-          .join('');
-        return `<div class="pos-block" style="margin-bottom:18px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
-      })
-      .join('');
-
-    const synonymsHtml = (data.synonyms || []).length
-      ? `<div style="margin-top:14px"><strong style="color:var(--accent3);font-size:.8rem;font-family:'Space Mono',monospace">近義詞 Synonyms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.synonyms.map((s) => `<span style="padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(s)}')">${escHtml(s)}</span>`).join('')}</div></div>`
-      : '';
-
-    const antonymsHtml = (data.antonyms || []).length
-      ? `<div style="margin-top:10px"><strong style="color:var(--accent2);font-size:.8rem;font-family:'Space Mono',monospace">反義詞 Antonyms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.antonyms.map((a) => `<span style="padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(a)}')">${escHtml(a)}</span>`).join('')}</div></div>`
-      : '';
-
-    const isAlreadyInWords = WORDS.some((w) => w.word.toLowerCase() === data.word.toLowerCase());
-    const addBtnHtml = isAlreadyInWords
-      ? `<span style="font-family:'Space Mono',monospace;font-size:.65rem;padding:4px 10px;border-radius:12px;background:rgba(71,255,176,.1);color:var(--success);border:1px solid var(--success)">✓ 已在單字庫</span>`
-      : `<button class="ds-btn load" style="font-size:.7rem;padding:5px 12px;background:var(--accent);color:var(--bg);border:none;font-weight:700" onclick="addWordFromModal('${escHtml(data.word.replace(/'/g, "\\'"))}')">＋ 加入單字庫</button>`;
-
-    const formsHtml = (data.forms || []).length
-      ? `<div style="margin-top:14px"><strong style="color:var(--lvl1);font-size:.8rem;font-family:'Space Mono',monospace">詞形變化 Forms:</strong> <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${data.forms.map((f) => `<span style="padding:2px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(f.value.replace(/'/g, "\\'"))}')">${escHtml(f.label)}: <strong style="color:var(--accent)">${escHtml(f.value)}</strong></span>`).join('')}</div></div>`
-      : '';
-
-    body.innerHTML = `
-      <div class="lookup-word-header" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span class="lookup-headword" style="font-size:2.2rem">${escHtml(data.word)}</span>
-        <span class="lookup-phonetic">${escHtml(data.phonetic)}</span>
-        <button class="speak-btn" onclick="speak('${escHtml(data.word.replace(/'/g, "\\'"))}')">▶ 發音</button>
-        <div style="margin-left:auto">${addBtnHtml}</div>
-      </div>
-      <div style="font-size:1.05rem;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border);font-weight:700">
-        ${escHtml(data.translation_compact || item?.translation || data.zhWordTr)}
-      </div>
-      <div class="lookup-section">
-        <div class="lookup-section-title">詞性與詳細字義</div>
-        ${defsHtml}
-      </div>
-      ${formsHtml}
-      ${synonymsHtml}
-      ${antonymsHtml}
-    `;
-  } catch (e) {
-    const item = WORDS.find((x) => x.word.toLowerCase() === wordStr.toLowerCase());
-    const isAlreadyInWords = !!item;
-    const addBtnHtml = isAlreadyInWords
-      ? `<span style="font-family:'Space Mono',monospace;font-size:.65rem;padding:4px 10px;border-radius:12px;background:rgba(71,255,176,.1);color:var(--success);border:1px solid var(--success)">✓ 已在單字庫</span>`
-      : `<button class="ds-btn load" style="font-size:.7rem;padding:5px 12px;background:var(--accent);color:var(--bg);border:none;font-weight:700" onclick="addWordFromModal('${escHtml(wordStr.replace(/'/g, "\\'"))}')">＋ 加入單字庫</button>`;
-
-    body.innerHTML = `
-      <div class="lookup-word-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span class="lookup-headword">${escHtml(wordStr)}</span>
-        <button class="speak-btn" onclick="speak('${escHtml(wordStr.replace(/'/g, "\\'"))}')">▶ 發音</button>
-        <div style="margin-left:auto">${addBtnHtml}</div>
-      </div>
-      <div style="margin-top:16px;font-size:.9rem;color:var(--text)">
-        <strong>翻譯：</strong> ${escHtml(item?.translation || '--')}
-      </div>
-    `;
+    data = await callDictAPI(wordStr);
+  } catch(e) {
+    console.warn('[WordForge] modal dict API fallback:', e);
   }
+
+  // Construct merged data
+  const headword = (data && data.word) || wordStr;
+  const phonetic = (data && data.phonetic && data.phonetic !== '--') ? data.phonetic : (localItem?.phonetic || `/${wordStr}/`);
+  const translation = (data && data.translation_compact) || (localItem?.translation) || (data && data.zhWordTr) || '--';
+
+  // Examples: prefer data.examples, fallback to localItem.examples
+  const rawEx = (data && data.examples && data.examples.length) ? data.examples : (localItem?.examples || []);
+  const exHtml = rawEx.map(ex => `
+    <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+      <div style="font-size:.88rem;color:var(--text);font-style:italic">“${escHtml(ex.en)}”</div>
+      ${ex.zh ? `<div style="font-size:.85rem;color:var(--accent);margin-top:4px;font-weight:700">↳ ${escHtml(ex.zh)}</div>` : ''}
+    </div>
+  `).join('');
+
+  // Definitions
+  let defsHtml = '';
+  if (data && data.definitions && data.definitions.length) {
+    defsHtml = data.definitions.map(pos => {
+      const items = (pos.defs || []).map((m, i) => `
+        <div class="def-item" style="margin-bottom:12px">
+          <span class="def-num">${i + 1}</span>
+          <div>
+            <div class="def-text"><strong style="color:var(--text);font-size:.92rem">${escHtml(m.def)}</strong></div>
+            ${m.defZh ? `<div style="color:var(--accent);font-size:.95rem;font-weight:700;margin-top:3px">↳ ${escHtml(m.defZh)}</div>` : ''}
+            ${m.ex ? `<div class="def-example" style="margin-top:4px;font-size:.8rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh ? `<br><span style="color:var(--text);font-size:.78rem">↳ ${escHtml(m.exZh)}</span>` : ''}</div>` : ''}
+          </div>
+        </div>`).join('');
+      return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
+    }).join('');
+  }
+
+  // Synonyms & Antonyms & Forms
+  const synonyms = (data && data.synonyms) || [];
+  const antonyms = (data && data.antonyms) || [];
+  const forms = (data && data.forms) || [];
+
+  const synonymsHtml = synonyms.length ? `
+    <div style="margin-top:14px">
+      <strong style="color:var(--accent3);font-size:.78rem;font-family:'Space Mono',monospace">近義詞 Synonyms:</strong>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${synonyms.map(s => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer;transition:all .15s" onclick="openWordModal('${escHtml(s.replace(/'/g,"\\'"))}')">${escHtml(s)}</span>`).join('')}
+      </div>
+    </div>` : '';
+
+  const antonymsHtml = antonyms.length ? `
+    <div style="margin-top:12px">
+      <strong style="color:var(--accent2);font-size:.78rem;font-family:'Space Mono',monospace">反義詞 Antonyms:</strong>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${antonyms.map(a => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer;transition:all .15s" onclick="openWordModal('${escHtml(a.replace(/'/g,"\\'"))}')">${escHtml(a)}</span>`).join('')}
+      </div>
+    </div>` : '';
+
+  const formsHtml = forms.length ? `
+    <div style="margin-top:14px">
+      <strong style="color:var(--lvl1);font-size:.78rem;font-family:'Space Mono',monospace">詞形變化 Forms:</strong>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${forms.map(f => `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(f.value.replace(/'/g,"\\'"))}')">${escHtml(f.label)}: <strong style="color:var(--accent)">${escHtml(f.value)}</strong></span>`).join('')}
+      </div>
+    </div>` : '';
+
+  const isAlreadyInWords = WORDS.some(w => w.word.toLowerCase() === headword.toLowerCase());
+  const addBtnHtml = isAlreadyInWords
+    ? `<span style="font-family:'Space Mono',monospace;font-size:.65rem;padding:5px 12px;border-radius:12px;background:rgba(71,255,176,.1);color:var(--success);border:1px solid var(--success)">✓ 已在單字庫</span>`
+    : `<button class="ds-btn load" style="font-size:.72rem;padding:6px 14px;background:var(--accent);color:var(--bg);border:none;font-weight:700;border-radius:4px;cursor:pointer" onclick="addWordFromModal('${escHtml(headword.replace(/'/g, "\\'"))}')">＋ 加入單字庫</button>`;
+
+  body.innerHTML = `
+    <div class="lookup-word-header" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="lookup-headword" style="font-size:2.2rem;font-family:'Space Mono',monospace">${escHtml(headword)}</span>
+      <span class="lookup-phonetic" style="font-family:'Space Mono',monospace">${escHtml(phonetic)}</span>
+      <button class="speak-btn" onclick="speak('${escHtml(headword.replace(/'/g, "\\'"))}')">▶ 發音</button>
+      <div style="margin-left:auto">${addBtnHtml}</div>
+    </div>
+
+    <div style="font-size:1.05rem;color:var(--accent);background:var(--surface2);padding:12px 16px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border);font-weight:700">
+      ${escHtml(translation)}
+    </div>
+
+    ${exHtml ? `
+    <div class="lookup-section" style="margin-bottom:18px">
+      <div class="lookup-section-title" style="color:var(--accent);font-family:'Space Mono',monospace">💬 中英文例句 Examples</div>
+      ${exHtml}
+    </div>` : ''}
+
+    ${defsHtml ? `
+    <div class="lookup-section" style="margin-bottom:18px">
+      <div class="lookup-section-title" style="font-family:'Space Mono',monospace">📖 詞性與詳細字義 Definitions</div>
+      ${defsHtml}
+    </div>` : ''}
+
+    ${formsHtml}
+    ${synonymsHtml}
+    ${antonymsHtml}
+  `;
+}
 }
 
 async function addWordFromModal(wordStr) {
