@@ -1670,12 +1670,11 @@ function setSRSFilter(mode){
   srsFilterMode = mode;
   if (mode === 'group' && activeGrpIdx === -1) {
     activeGrpIdx = 0;
-    localStorage.setItem('wf_active_group', 0);
   }
   document.getElementById('srs-filter-memory').classList.toggle('active', mode==='memory');
   document.getElementById('srs-filter-dataset').classList.toggle('active', mode==='dataset');
   document.getElementById('srs-filter-group').classList.toggle('active', mode==='group');
-  document.getElementById('srs-group-banner').style.display = (mode==='group') ? 'block' : 'none';
+  document.getElementById('srs-group-banner').style.display = 'none';
   renderSRS();
 }
 
@@ -1704,7 +1703,7 @@ function getDueWords(){
 }
 
 function renderSRS(){
-  if(srsFilterMode==='group') renderGrpBanner('srs-group-banner', 'selectSRSGroup');
+  document.getElementById('srs-group-banner').style.display = 'none';
   const due=getDueWords(), today=todayStr();
   let baseList;
   if (srsFilterMode === 'memory') {
