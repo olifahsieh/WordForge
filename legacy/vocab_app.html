@@ -779,6 +779,7 @@ function saveAll(){
   localStorage.setItem('wf_history',   JSON.stringify(reviewHistory));
   localStorage.setItem('wf_datasets',  JSON.stringify(datasets));
   localStorage.setItem('wf_active_dataset', activeDatasetId);
+  localStorage.setItem('wf_active_group',   activeGrpIdx);
   localStorage.setItem('wf_streak',    streak);
 
   if (window.fbUser && window.fbDb && window.fbSetDoc && window.fbDoc) {
@@ -790,6 +791,7 @@ function saveAll(){
         reviewHistory,
         datasets,
         activeDatasetId,
+        activeGrpIdx,
         streak,
         lastUpdated: new Date().toISOString()
       }, {merge: true});
@@ -843,6 +845,7 @@ window.loadFromCloud = async function() {
       if (data.reviewHistory) reviewHistory = data.reviewHistory;
       if (data.datasets) datasets = data.datasets;
       if (data.activeDatasetId) activeDatasetId = data.activeDatasetId;
+      if (data.activeGrpIdx !== undefined) activeGrpIdx = data.activeGrpIdx;
       if (data.streak !== undefined) streak = data.streak;
       
       // Save locally to keep in sync
@@ -851,12 +854,12 @@ window.loadFromCloud = async function() {
       localStorage.setItem('wf_history',   JSON.stringify(reviewHistory));
       localStorage.setItem('wf_datasets',  JSON.stringify(datasets));
       localStorage.setItem('wf_active_dataset', activeDatasetId);
+      localStorage.setItem('wf_active_group',   activeGrpIdx);
       localStorage.setItem('wf_streak',    streak);
       
-      updateHeader();
-      if (typeof initDatasets === 'function') initDatasets();
-      if (typeof renderCustomList === 'function' && currentMode === 'list') renderCustomList();
-      showToast("從雲端同步成功！");
+      loadDataset(activeDatasetId);
+      if (typeof switchMode === 'function') switchMode(currentMode);
+      showToast("☁️ 雲端同步成功！");
     }
   } catch(e) {
     console.error("Cloud load failed", e);
@@ -903,26 +906,14 @@ let wordGroups = [];
 let activeGrpIdx = 0;
 
 function buildGroups(){
-  // Load or create a stable random word order
-  let order = JSON.parse(localStorage.getItem('wf_group_order')||'null');
   const allWords = [...WORDS];
-  const curKeys = allWords.map(w=>w.word);
-  // Rebuild if word list changed
-  if(!order || order.length !== allWords.length || !curKeys.every(k=>order.includes(k))){
-    order = shuffle(curKeys);
-    localStorage.setItem('wf_group_order', JSON.stringify(order));
-  }
-  const wordMap = new Map(allWords.map(w=>[w.word,w]));
-  const ordered = order.map(k=>wordMap.get(k)).filter(Boolean);
-  // Any new words not yet in order go at the end
-  allWords.forEach(w=>{ if(!order.includes(w.word)) ordered.push(w); });
   wordGroups = [];
-  for(let i=0;i<ordered.length;i+=GROUP_SIZE){
-    wordGroups.push(ordered.slice(i,i+GROUP_SIZE));
+  for(let i=0; i<allWords.length; i+=GROUP_SIZE){
+    wordGroups.push(allWords.slice(i, i+GROUP_SIZE));
   }
   // Restore active group
   const stored = parseInt(localStorage.getItem('wf_active_group')||'0');
-  activeGrpIdx = Math.max(0, Math.min(stored, wordGroups.length-1));
+  activeGrpIdx = Math.max(0, Math.min(stored, Math.max(0, wordGroups.length-1)));
 }
 
 function isGroupDone(idx){
