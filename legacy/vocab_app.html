@@ -935,12 +935,28 @@ function isGroupDone(idx){
   const g=wordGroups[idx]||[];
   return g.length>0 && g.every(w=>getMastery(w.word)===2);
 }
-function getActiveGroup(){ return wordGroups[activeGrpIdx]||[]; }
+function getActiveGroup(){
+  if(activeGrpIdx===-1) return getDueWords();
+  return wordGroups[activeGrpIdx]||[];
+}
 function setActiveGrp(idx){
   activeGrpIdx=idx;
   localStorage.setItem('wf_active_group', idx);
 }
+function selectGlobalGroup(idx){
+  setActiveGrp(idx);
+  saveAll();
+  if(currentMode==='flashcard') initFlashcard();
+  else if(currentMode==='quiz') startQuiz();
+  else if(currentMode==='typing') startTyping();
+  else if(currentMode==='sentence') startSentence();
+  else if(currentMode==='srs') renderSRS();
+}
 function grpProgress(idx){
+  if(idx===-1){
+    const due=getDueWords();
+    return { done:0, total:due.length };
+  }
   const g=wordGroups[idx]||[];
   return { done:g.filter(w=>getMastery(w.word)===2).length, total:g.length };
 }
@@ -948,18 +964,31 @@ function grpProgress(idx){
 // Render the group pill bar into containerId; clickFn(idx) called on click
 function renderGrpBanner(containerId, clickFn){
   const el=document.getElementById(containerId); if(!el) return;
+  const dueCount = getDueWords().length;
+  const srsActive = activeGrpIdx === -1;
+  const srsCls = 'group-pill' + (srsActive ? ' active' : '') + (dueCount === 0 ? ' done' : '');
+  const srsPill = `<button class="${srsCls}" onclick="selectGlobalGroup(-1)" title="記憶字庫（今日需複習 ${dueCount} 個單字）" style="background:${srsActive?'var(--accent3)':'rgba(255,170,0,0.12)'};color:${srsActive?'#000':'var(--accent3)'};border-color:var(--accent3);font-weight:700">🧠 記憶字庫 (${dueCount})</button>`;
+
   const pills=wordGroups.map((g,i)=>{
     const done=isGroupDone(i);
     const active=i===activeGrpIdx;
     const {done:d,total:t}=grpProgress(i);
     let cls='group-pill'+(active?' active':'')+(done?' done':'');
-    return `<button class="${cls}" onclick="${clickFn}(${i})" title="第${i+1}組 ${d}/${t}已懂">第${i+1}組</button>`;
+    return `<button class="${cls}" onclick="selectGlobalGroup(${i})" title="第${i+1}組 ${d}/${t}已懂">第${i+1}組</button>`;
   }).join('');
-  const {done,total}=grpProgress(activeGrpIdx);
+
+  let infoHtml = '';
+  if (activeGrpIdx === -1) {
+    infoHtml = `記憶字庫 <strong>${dueCount}</strong> 個待複習`;
+  } else {
+    const {done,total}=grpProgress(activeGrpIdx);
+    infoHtml = `本組 <strong>${done}/${total}</strong> 已懂`;
+  }
+
   el.innerHTML=`<div class="group-banner">
     <span class="group-label">字組</span>
-    <div class="group-pills">${pills}</div>
-    <span class="group-info">本組 <strong>${done}/${total}</strong> 已懂</span>
+    <div class="group-pills">${srsPill}${pills}</div>
+    <span class="group-info">${infoHtml}</span>
   </div>`;
 }
 
@@ -1055,13 +1084,11 @@ function speakCurrent(rate = 0.88) {
 let fcDeck=[],fcIndex=0;
 
 function selectFCGroup(idx){
-  setActiveGrp(idx);
-  initFlashcard();
+  selectGlobalGroup(idx);
 }
 function fcNextGroup(){
   if(activeGrpIdx < wordGroups.length - 1){
-    setActiveGrp(activeGrpIdx + 1);
-    initFlashcard();
+    selectGlobalGroup(activeGrpIdx + 1);
   }
 }
 
@@ -1170,9 +1197,9 @@ function setQuizMode(m,btn){
   document.querySelectorAll('.qmode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); startQuiz();
 }
-function selectQuizGroup(idx){ setActiveGrp(idx); startQuiz(); }
+function selectQuizGroup(idx){ selectGlobalGroup(idx); }
 function quizNextGroup(){
-  if(activeGrpIdx<wordGroups.length-1){ setActiveGrp(activeGrpIdx+1); startQuiz(); }
+  if(activeGrpIdx<wordGroups.length-1){ selectGlobalGroup(activeGrpIdx+1); }
 }
 
 function startQuiz(){
@@ -1307,9 +1334,9 @@ function buildPartialHint(word){
   return word.split('').map((c,i)=>c===' '?' ':revealSet.has(i)?c:'_').join(' ');
 }
 
-function selectTypingGroup(idx){ setActiveGrp(idx); startTyping(); }
+function selectTypingGroup(idx){ selectGlobalGroup(idx); }
 function typingNextGroup(){
-  if(activeGrpIdx<wordGroups.length-1){ setActiveGrp(activeGrpIdx+1); startTyping(); }
+  if(activeGrpIdx<wordGroups.length-1){ selectGlobalGroup(activeGrpIdx+1); }
 }
 
 function startTyping(){
@@ -1446,9 +1473,9 @@ let stQueue=[], stIdx=0, stCorrect=0, stTotal=0;
 let stErrMap={};
 let stCountdownTimer=null, stAnswerShowing=false;
 
-function selectSentenceGroup(idx){ setActiveGrp(idx); startSentence(); }
+function selectSentenceGroup(idx){ selectGlobalGroup(idx); }
 function sentenceNextGroup(){
-  if(activeGrpIdx<wordGroups.length-1){ setActiveGrp(activeGrpIdx+1); startSentence(); }
+  if(activeGrpIdx<wordGroups.length-1){ selectGlobalGroup(activeGrpIdx+1); }
 }
 
 function startSentence(){
@@ -1720,12 +1747,9 @@ function renderHeatmap(){
 }
 function startSRSSession(){
   const due=getDueWords(); if(!due.length) return;
-  fcDeck=shuffle(due); fcIndex=0;
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sec-flashcard').classList.add('active');
-  document.querySelector('[data-mode=flashcard]').classList.add('active');
-  showFCCard(); showToast(`🧠 開始複習 ${due.length} 個單字`);
+  selectGlobalGroup(-1);
+  switchMode('flashcard');
+  showToast(`🧠 開始複習 ${due.length} 個單字`);
 }
 
 // ═══════════════════════════════════════
