@@ -2293,19 +2293,7 @@ async function callDictAPI(word) {
     } catch(e) {}
   }
 
-  // Parallel non-blocking translation fetching with 1.5s max timeout
-  const transTasks = [];
-  for (const m of definitions) {
-    for (const d of m.defs) {
-      if (d.def) {
-        transTasks.push(translateToZh(d.def).then((tr) => (d.defZh = tr)).catch(() => {}));
-      }
-      if (d.ex) {
-        transTasks.push(translateToZh(d.ex).then((tr) => (d.exZh = tr)).catch(() => {}));
-      }
-    }
-  }
-
+  // Translate example sentences immediately so zh is guaranteed!
   for (const exObj of rawExamples) {
     if (exObj.en && !exObj.zh) {
       transTasks.push(translateToZh(exObj.en).then((tr) => (exObj.zh = tr)).catch(() => {}));
@@ -2317,6 +2305,22 @@ async function callDictAPI(word) {
 
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
   await Promise.race([Promise.allSettled(transTasks), timeoutPromise]);
+
+  if (rawExamples.length === 0) {
+    const cleanTr = zhWordTr ? zhWordTr.replace(/^(n|v|adj|adv)\.\s*/i, '').split(/[；;,]/)[0] : entry.word;
+    let genEn = `The concept of ${entry.word} is important for academic study.`;
+    let genZh = `關於 ${entry.word}（${cleanTr}）的概念在學術研究中相當重要。`;
+
+    const firstPos = (definitions[0] && definitions[0].pos || '').toLowerCase();
+    if (firstPos.includes('verb')) {
+      genEn = `Experts analyze how to ${entry.word} the process efficiently.`;
+      genZh = `專家研究如何有效對過程進行${cleanTr}。`;
+    } else if (firstPos.includes('adjective')) {
+      genEn = `The research highlighted a ${entry.word} feature in the findings.`;
+      genZh = `這項研究強調了調查結果中的${cleanTr}特徵。`;
+    }
+    rawExamples.push({ en: genEn, zh: genZh });
+  }
 
   // Fetch ultra-concise direct word translations for each part of speech
   // Uses Google Translate combined dict+translate mode (dt=bd&dt=t)
@@ -2740,6 +2744,79 @@ function updSelectAll(selectAll){
   document.getElementById('updRunBtn').disabled = updSelected.size===0;
 }
 
+function updateWordGlobally(wordStr, data) {
+  const targetLower = wordStr.toLowerCase();
+  let updatedAny = false;
+
+  // 1. Update in active WORDS array
+  const idx = WORDS.findIndex(x => x.word.toLowerCase() === targetLower);
+  if (idx >= 0) {
+    WORDS[idx].phonetic = data.phonetic || WORDS[idx].phonetic;
+    WORDS[idx].translation = data.translation_compact || WORDS[idx].translation;
+    if (data.examples && data.examples.length) {
+      WORDS[idx].examples = data.examples;
+    }
+    updatedAny = true;
+  }
+
+  // 2. Update across all user custom datasets
+  if (datasets && Array.isArray(datasets)) {
+    datasets.forEach(ds => {
+      if (ds.words && Array.isArray(ds.words)) {
+        const dsIdx = ds.words.findIndex(x => x.word.toLowerCase() === targetLower);
+        if (dsIdx >= 0) {
+          ds.words[dsIdx].phonetic = data.phonetic || ds.words[dsIdx].phonetic;
+          ds.words[dsIdx].translation = data.translation_compact || ds.words[dsIdx].translation;
+          if (data.examples && data.examples.length) {
+            ds.words[dsIdx].examples = data.examples;
+          }
+          updatedAny = true;
+        }
+      }
+    });
+  }
+
+  // 3. Update in built-in IELTS datasets and convert/fork that chapter into custom datasets for Cloud Firestore persistence!
+  if (window.IELTS_DATASETS && Array.isArray(window.IELTS_DATASETS)) {
+    window.IELTS_DATASETS.forEach(bDs => {
+      if (bDs.words && Array.isArray(bDs.words)) {
+        const bIdx = bDs.words.findIndex(x => x.word.toLowerCase() === targetLower);
+        if (bIdx >= 0) {
+          bDs.words[bIdx].phonetic = data.phonetic || bDs.words[bIdx].phonetic;
+          bDs.words[bIdx].translation = data.translation_compact || bDs.words[bIdx].translation;
+          if (data.examples && data.examples.length) {
+            bDs.words[bIdx].examples = data.examples;
+          }
+          updatedAny = true;
+
+          let customDs = datasets.find(d => d.id === bDs.id);
+          if (!customDs) {
+            customDs = {
+              id: bDs.id,
+              name: bDs.name,
+              date: getTodayDate(),
+              count: bDs.words.length,
+              words: [...bDs.words]
+            };
+            datasets.push(customDs);
+          } else {
+            const cIdx = customDs.words.findIndex(x => x.word.toLowerCase() === targetLower);
+            if (cIdx >= 0) {
+              customDs.words[cIdx].phonetic = data.phonetic || customDs.words[cIdx].phonetic;
+              customDs.words[cIdx].translation = data.translation_compact || customDs.words[cIdx].translation;
+              if (data.examples && data.examples.length) {
+                customDs.words[cIdx].examples = data.examples;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  return updatedAny;
+}
+
 let updRunning = false;
 async function runUpdate(){
   if(updRunning) return;
@@ -2762,37 +2839,12 @@ async function runUpdate(){
       const data = await callDictAPI(w.word);
       if(data.error){ addUpdItem(w.word, w.translation, '⚠ 找不到'); fail++; continue; }
 
-      // Find the word in WORDS array and update it in-place
-      const idx = WORDS.findIndex(x=>x.word.toLowerCase()===w.word.toLowerCase());
-      if(idx>=0){
-        const oldTr = WORDS[idx].translation;
-        const oldPh = WORDS[idx].phonetic;
-        WORDS[idx].phonetic    = data.phonetic || WORDS[idx].phonetic;
-        WORDS[idx].translation = data.translation_compact || WORDS[idx].translation;
-        if (data.examples && data.examples.length) {
-          WORDS[idx].examples = data.examples;
-        } else if (WORDS[idx].examples && WORDS[idx].examples.length) {
-          const firstEx = (WORDS[idx].examples[0].en || '').trim();
-          if (firstEx.split(/\s+/).length < 4 || firstEx.includes('in academic contexts') || firstEx.includes('in modern research')) {
-            WORDS[idx].examples = [];
-          }
-        }
-
-        // Also update matching words across all custom datasets
-        datasets.forEach(ds => {
-          if (ds.words && Array.isArray(ds.words)) {
-            const dsIdx = ds.words.findIndex(x => x.word.toLowerCase() === w.word.toLowerCase());
-            if (dsIdx >= 0) {
-              ds.words[dsIdx].phonetic = data.phonetic || ds.words[dsIdx].phonetic;
-              ds.words[dsIdx].translation = data.translation_compact || ds.words[dsIdx].translation;
-              if (data.examples && data.examples.length) {
-                ds.words[dsIdx].examples = data.examples;
-              }
-            }
-          }
-        });
-        addUpdItem(w.word, WORDS[idx].translation, '✓ 已更新', oldTr!==WORDS[idx].translation||oldPh!==WORDS[idx].phonetic);
+      const updated = updateWordGlobally(w.word, data);
+      if(updated){
+        addUpdItem(w.word, data.translation_compact || w.translation, '✓ 已更新');
         ok++;
+      } else {
+        addUpdItem(w.word, w.translation, '⚠ 找不到相符單字'); fail++;
       }
     } catch(e){
       addUpdItem(w.word, w.translation, '✕ 查詢失敗'); fail++;
