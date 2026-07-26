@@ -2656,8 +2656,23 @@ function isIncomplete(w){
 }
 
 function getUpdateCandidates(){
-  if(updFilter==='incomplete') return WORDS.filter(isIncomplete);
-  if(updFilter==='all') return [...WORDS];
+  if(updFilter==='incomplete'){
+    const candidateMap = new Map();
+    WORDS.filter(isIncomplete).forEach(w => candidateMap.set(w.word.toLowerCase(), w));
+    getDueWords().filter(isIncomplete).forEach(w => candidateMap.set(w.word.toLowerCase(), w));
+    datasets.forEach(ds => {
+      if (ds.words && Array.isArray(ds.words)) {
+        ds.words.filter(isIncomplete).forEach(w => candidateMap.set(w.word.toLowerCase(), w));
+      }
+    });
+    return Array.from(candidateMap.values());
+  }
+  if(updFilter==='all'){
+    const candidateMap = new Map();
+    WORDS.forEach(w => candidateMap.set(w.word.toLowerCase(), w));
+    getDueWords().forEach(w => candidateMap.set(w.word.toLowerCase(), w));
+    return Array.from(candidateMap.values());
+  }
   if(updFilter==='select') return WORDS.filter(w=>updSelected.has(w.word));
   return [];
 }
@@ -2670,22 +2685,21 @@ function setUpdateFilter(mode, btn){
 }
 
 function refreshUpdatePanel(){
-  // update "all" count badge
   document.getElementById('updf-all-count').textContent = WORDS.length;
 
-  const incomplete = WORDS.filter(isIncomplete);
+  const incomplete = getUpdateCandidates();
   const infoEl = document.getElementById('upd-incomplete-info');
 
   if(updFilter==='incomplete'){
     infoEl.textContent = incomplete.length
-      ? `找到 ${incomplete.length} 個資料不完整的單字（音標缺失、翻譯過短或標記 web.）`
-      : '✓ 所有單字資料已完整';
+      ? `找到 ${incomplete.length} 個資料不完整的單字（音標、英文例句或中文翻譯缺失）`
+      : '✓ 所有單字與記憶字庫資料已完整';
     document.getElementById('upd-select-list').style.display='none';
     document.getElementById('updRunBtn').disabled = incomplete.length===0;
   } else if(updFilter==='all'){
-    infoEl.textContent = `將重新查詢並更新所有 ${WORDS.length} 個單字`;
+    infoEl.textContent = `將重新查詢並更新 ${incomplete.length} 個單字`;
     document.getElementById('upd-select-list').style.display='none';
-    document.getElementById('updRunBtn').disabled = WORDS.length===0;
+    document.getElementById('updRunBtn').disabled = incomplete.length===0;
   } else {
     infoEl.textContent = '';
     buildSelectList();
@@ -2786,6 +2800,7 @@ async function runUpdate(){
   saveAll();
   updateHeader();
   renderDatasetsList();
+  refreshUpdatePanel();
 
   prog.style.color = ok>0 ? 'var(--success)' : 'var(--danger)';
   prog.textContent = `完成！成功更新 ${ok} 個，失敗 ${fail} 個。`;
