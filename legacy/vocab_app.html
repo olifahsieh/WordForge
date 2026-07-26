@@ -2122,6 +2122,39 @@ function deleteDataset(id){
   }
   saveAll(); renderDatasetsList(); showToast('已刪除單字集');
 }
+
+function renderDatasetsList(){
+  const container = document.getElementById('datasetsList');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!datasets || datasets.length===0){
+    container.innerHTML = `<div class="empty-state">尚未建立字庫</div>`;
+    return;
+  }
+  datasets.forEach(ds => {
+    const isActive = ds.id===activeDatasetId;
+    const item = document.createElement('div');
+    item.className = 'dataset-item' + (isActive?' active-set':'');
+    item.innerHTML = `
+      <span class="dataset-name">${escHtml(ds.name)}</span>
+      <span class="dataset-meta">${escHtml(ds.date)} • ${ds.count||0}字</span>
+      <div class="dataset-actions">
+        <button class="ds-btn load" onclick="loadDataset('${ds.id}')">載入</button>
+        <button class="ds-btn del" onclick="deleteDataset('${ds.id}')">刪除</button>
+      </div>`;
+    container.appendChild(item);
+  });
+}
+
+async function translateToZh(text) {
+  const q = encodeURIComponent(text.trim());
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${q}`;
+  const resp = await fetch(url);
+  if (!resp.ok) return '';
+  const data = await resp.json();
+  return (data && data[0] && data[0][0] && data[0][0][0]) ? data[0][0][0] : '';
+}
+
 async function callDictAPI(word) {
   const query = encodeURIComponent(word.trim());
 
@@ -2843,14 +2876,16 @@ function addUpdItem(word, tr, status, changed=false){
 // ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
-(function init(){
-  if(activeDatasetId==='builtin' || !activeDatasetId){
-    if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) {
+(function init() {
+  // Use built-in IELTS dataset if no active dataset or if builtin is selected
+  if (activeDatasetId === 'builtin' || !activeDatasetId) {
+    if (window.IELTS_DATASETS && window.IELTS_DATASETS.length > 0) {
       activeDatasetId = window.IELTS_DATASETS[0].id;
       localStorage.setItem('wf_active_dataset', activeDatasetId);
     }
   }
-  
+
+  // Load the selected dataset and initialise UI
   loadDataset(activeDatasetId);
   initDropZone();
 })();
