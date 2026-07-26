@@ -2365,11 +2365,9 @@ async function callDictAPI(word) {
     clearTimeout(dictTimeout);
     if (dictRes.ok) {
       const dictData = await dictRes.json();
-      // dt=t result: dictData[0] = [[translatedText, ...], ...]
       if (dictData && dictData[0] && dictData[0][0] && dictData[0][0][0]) {
         gtPrimaryTr = dictData[0][0][0].trim();
       }
-      // dt=bd result: dictData[1] = array of [ posString, [term1, term2, ...], ... ]
       if (dictData && dictData[1]) {
         for (const group of dictData[1]) {
           const pos = (group[0] || '').toLowerCase().trim();
@@ -2382,6 +2380,65 @@ async function callDictAPI(word) {
     }
   } catch (dictErr) {
     console.warn('[WordForge] dict fetch error:', dictErr);
+  }
+
+  // Populate definitions if empty or generic
+  if (definitions.length === 0 || (definitions.length === 1 && definitions[0].pos === 'definition')) {
+    definitions.length = 0;
+    Object.keys(gtDictMap).forEach((posKey) => {
+      const terms = gtDictMap[posKey];
+      definitions.push({
+        pos: posKey,
+        defs: [{
+          def: terms.join('、 '),
+          defZh: terms.join('、 '),
+          ex: '',
+          exZh: ''
+        }]
+      });
+    });
+  }
+
+  // Datamuse API fallback for Synonyms & Antonyms
+  if (synonyms.length === 0) {
+    try {
+      const dmCtrl = new AbortController();
+      const dmTimeout = setTimeout(() => dmCtrl.abort(), 1200);
+      const dmRes = await fetch(`https://api.datamuse.com/words?rel_syn=${query}&max=6`, { signal: dmCtrl.signal });
+      clearTimeout(dmTimeout);
+      if (dmRes.ok) {
+        const dmData = await dmRes.json();
+        dmData.forEach(item => { if (item.word && !synonyms.includes(item.word)) synonyms.push(item.word); });
+      }
+    } catch(e) {}
+  }
+
+  if (antonyms.length === 0) {
+    try {
+      const dmCtrl = new AbortController();
+      const dmTimeout = setTimeout(() => dmCtrl.abort(), 1200);
+      const dmRes = await fetch(`https://api.datamuse.com/words?rel_ant=${query}&max=6`, { signal: dmCtrl.signal });
+      clearTimeout(dmTimeout);
+      if (dmRes.ok) {
+        const dmData = await dmRes.json();
+        dmData.forEach(item => { if (item.word && !antonyms.includes(item.word)) antonyms.push(item.word); });
+      }
+    } catch(e) {}
+  }
+
+  // Smart POS Forms fallback
+  if (forms.length === 0) {
+    const wordBase = entry.word.toLowerCase();
+    const primaryPos = Object.keys(gtDictMap)[0] || (definitions[0] && definitions[0].pos) || 'noun';
+    if (primaryPos.includes('verb')) {
+      forms.push({ label: 'past tense', value: wordBase.endsWith('e') ? `${wordBase}d` : `${wordBase}ed` });
+      forms.push({ label: 'present participle', value: wordBase.endsWith('e') ? `${wordBase.slice(0, -1)}ing` : `${wordBase}ing` });
+    } else if (primaryPos.includes('noun')) {
+      forms.push({ label: 'plural', value: wordBase.endsWith('y') ? `${wordBase.slice(0, -1)}ies` : `${wordBase}s` });
+    } else if (primaryPos.includes('adjective')) {
+      forms.push({ label: 'noun form', value: wordBase.endsWith('e') ? `${wordBase.slice(0, -1)}ity` : `${wordBase}ness` });
+      forms.push({ label: 'adverb', value: wordBase.endsWith('le') ? `${wordBase.slice(0, -1)}y` : `${wordBase}ly` });
+    }
   }
 
   // POS name mapping: Google Translate returns Chinese POS names, dictionary API uses English
