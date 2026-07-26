@@ -2145,6 +2145,35 @@ async function callDictAPI(word) {
   if (rawExamples.length === 0) {
     try {
       const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&dt=ex&q=${query}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[13] && Array.isArray(data[13])) {
+          for (const group of data[13]) {
+            if (Array.isArray(group)) {
+              for (const item of group) {
+                if (item && Array.isArray(item) && item[0]) {
+                  const cleanEn = item[0].replace(/<[^>]+>/g, '').trim();
+                  if (cleanEn && cleanEn.split(/\s+/).length >= 3 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
+                    const formattedEn = cleanEn.charAt(0).toUpperCase() + cleanEn.slice(1);
+                    rawExamples.push({ en: formattedEn, zh: '' });
+                    if (rawExamples.length >= 2) break;
+                  }
+                }
+              }
+            }
+            if (rawExamples.length >= 2) break;
+          }
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (rawExamples.length === 0) {
+    try {
+      const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
       const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${query}&langpair=en|zh-TW`, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -2155,7 +2184,6 @@ async function callDictAPI(word) {
           const seg = (m.segment || '').trim();
           const tr = (m.translation || '').trim();
           const wordCount = seg.split(/\s+/).length;
-          // Must be a genuine sentence (at least 4 words) containing target word
           if (wordCount >= 4 && seg.toLowerCase().includes(word.toLowerCase()) && seg.length < 160 && tr && !tr.startsWith('MYMEMORY') && tr.toLowerCase() !== seg.toLowerCase()) {
             rawExamples.push({ en: seg, zh: tr });
             if (rawExamples.length >= 2) break;
@@ -2266,22 +2294,6 @@ async function callDictAPI(word) {
       // Ignore background errors
     }
   }, 0);
-
-  if (rawExamples.length === 0) {
-    const cleanTr = zhWordTr ? zhWordTr.replace(/^(n|v|adj|adv)\.\s*/i, '').split(/[；;,]/)[0] : entry.word;
-    let genEn = `The concept of ${entry.word} is widely discussed in academic contexts.`;
-    let genZh = `關於 ${entry.word}（${cleanTr}）的概念在學術領域中被廣泛討論。`;
-
-    const firstPos = (definitions[0] && definitions[0].pos || '').toLowerCase();
-    if (firstPos.includes('verb')) {
-      genEn = `Researchers continue to ${entry.word} the results to gain deeper insights.`;
-      genZh = `研究人員持續對結果進行${cleanTr}，以獲得更深入的見解。`;
-    } else if (firstPos.includes('adjective')) {
-      genEn = `The findings revealed a ${entry.word} pattern throughout the study.`;
-      genZh = `研究結果在整個實驗中皆呈現出${cleanTr}的特徵。`;
-    }
-    rawExamples.push({ en: genEn, zh: genZh });
-  }
 
   return {
     word: entry.word,
@@ -2535,7 +2547,8 @@ function isIncomplete(w){
   const tr = (w.translation||'').trim();
   const ph = (w.phonetic||'').trim();
   const firstEx = (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) ? w.examples[0].en.trim() : '';
-  const hasValidEx = firstEx && (firstEx.split(/\s+/).length >= 4);
+  const isCanned = firstEx.includes('in academic contexts') || firstEx.includes('in modern research') || firstEx.includes('across all samples');
+  const hasValidEx = firstEx && (firstEx.split(/\s+/).length >= 4) && !isCanned;
   return ph==='--' || ph==='' || tr.startsWith('web.') || tr.length<5 || !hasValidEx;
 }
 
@@ -2639,7 +2652,7 @@ async function runUpdate(){
           WORDS[idx].examples = data.examples;
         } else if (WORDS[idx].examples && WORDS[idx].examples.length) {
           const firstEx = (WORDS[idx].examples[0].en || '').trim();
-          if (firstEx.split(/\s+/).length < 4) {
+          if (firstEx.split(/\s+/).length < 4 || firstEx.includes('in academic contexts') || firstEx.includes('in modern research')) {
             WORDS[idx].examples = [];
           }
         }
