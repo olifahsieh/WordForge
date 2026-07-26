@@ -922,7 +922,7 @@ function getTodayDate(){ const d=new Date(); return `${String(d.getMonth()+1).pa
 // ═══════════════════════════════════════
 const GROUP_SIZE = 25;
 let wordGroups = [];
-let activeGrpIdx = 0;
+let activeGrpIdx = -1;
 
 function buildGroups(){
   const allWords = [...WORDS];
@@ -930,9 +930,14 @@ function buildGroups(){
   for(let i=0; i<allWords.length; i+=GROUP_SIZE){
     wordGroups.push(allWords.slice(i, i+GROUP_SIZE));
   }
-  // Restore active group
-  const stored = parseInt(localStorage.getItem('wf_active_group')||'0');
-  activeGrpIdx = Math.max(0, Math.min(stored, Math.max(0, wordGroups.length-1)));
+  // Restore active group, default to -1 (記憶字庫)
+  const storedRaw = localStorage.getItem('wf_active_group');
+  const stored = storedRaw !== null ? parseInt(storedRaw) : -1;
+  if(stored === -1){
+    activeGrpIdx = -1;
+  } else {
+    activeGrpIdx = Math.max(0, Math.min(stored, Math.max(0, wordGroups.length-1)));
+  }
 }
 
 function isGroupDone(idx){
