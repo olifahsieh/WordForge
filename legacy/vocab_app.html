@@ -2136,8 +2136,8 @@ async function callDictAPI(word) {
   const rawExamples = [];
   definitions.forEach((d) => {
     d.defs.forEach((item) => {
-      if (item.ex) {
-        rawExamples.push({ en: item.ex, zh: '' });
+      if (item.ex && item.ex.trim().split(/\s+/).length >= 3) {
+        rawExamples.push({ en: item.ex.trim(), zh: '' });
       }
     });
   });
@@ -2152,8 +2152,12 @@ async function callDictAPI(word) {
         const mmData = await mmRes.json();
         const matches = mmData.matches || [];
         for (const m of matches) {
-          if (m.segment && m.segment.toLowerCase().includes(word.toLowerCase()) && m.segment.length < 140 && m.translation && !m.translation.startsWith('MYMEMORY')) {
-            rawExamples.push({ en: m.segment.trim(), zh: m.translation.trim() });
+          const seg = (m.segment || '').trim();
+          const tr = (m.translation || '').trim();
+          const wordCount = seg.split(/\s+/).length;
+          // Must be a genuine sentence (at least 4 words) containing target word
+          if (wordCount >= 4 && seg.toLowerCase().includes(word.toLowerCase()) && seg.length < 160 && tr && !tr.startsWith('MYMEMORY') && tr.toLowerCase() !== seg.toLowerCase()) {
+            rawExamples.push({ en: seg, zh: tr });
             if (rawExamples.length >= 2) break;
           }
         }
@@ -2614,7 +2618,14 @@ async function runUpdate(){
         const oldPh = WORDS[idx].phonetic;
         WORDS[idx].phonetic    = data.phonetic || WORDS[idx].phonetic;
         WORDS[idx].translation = data.translation_compact || WORDS[idx].translation;
-        WORDS[idx].examples    = (data.examples && data.examples.length) ? data.examples : WORDS[idx].examples;
+        if (data.examples && data.examples.length) {
+          WORDS[idx].examples = data.examples;
+        } else if (WORDS[idx].examples && WORDS[idx].examples.length) {
+          const firstEx = (WORDS[idx].examples[0].en || '').trim();
+          if (firstEx.split(/\s+/).length < 4) {
+            WORDS[idx].examples = [];
+          }
+        }
         addUpdItem(w.word, WORDS[idx].translation, '✓ 已更新', oldTr!==WORDS[idx].translation||oldPh!==WORDS[idx].phonetic);
         ok++;
       }
