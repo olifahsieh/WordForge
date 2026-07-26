@@ -367,6 +367,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   <button class="tab-btn active"  data-mode="flashcard" onclick="switchMode('flashcard',this)">🃏 單字卡</button>
   <button class="tab-btn"         data-mode="quiz"      onclick="switchMode('quiz',this)">🎯 測驗</button>
   <button class="tab-btn"         data-mode="typing"    onclick="switchMode('typing',this)">⌨️ 拼字</button>
+  <button class="tab-btn"         data-mode="sentence"  onclick="switchMode('sentence',this)">✍️ 造句</button>
   <button class="tab-btn"         data-mode="srs"       onclick="switchMode('srs',this)">🧠 記憶曲線</button>
   <button class="tab-btn"         data-mode="list"      onclick="switchMode('list',this)">📋 單字表</button>
   <button class="tab-btn"         data-mode="addword"   onclick="switchMode('addword',this)">✏️ 新增單字</button>
@@ -466,7 +467,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   </div>
 </div>
 
-<!-- TYPING / SENTENCE CONTEXT -->
+<!-- TYPING -->
 <div class="section" id="sec-typing">
   <div class="typing-area">
     <div id="typing-group-banner"></div>
@@ -478,10 +479,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     </div>
     <div id="typingGameArea">
       <div class="typing-question">
-        <div class="quiz-type-label">⌨️ 拼字 — 看例句填空，打出英文單字</div>
-        <div class="card-example-front" id="ty-sentence-en" style="margin-top:14px;font-size:1.05rem;color:var(--text);padding:14px 18px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:100%;text-align:center;line-height:1.6;font-style:italic"></div>
-        <div class="card-example-back" id="ty-sentence-zh" style="margin-top:10px;font-size:.9rem;color:var(--accent);padding:10px 14px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--border);width:100%;text-align:center;font-weight:700"></div>
-        <div class="q-phonetic" id="ty-phonetic" style="margin-top:10px;margin-bottom:10px"></div>
+        <div class="quiz-type-label">看中文，打英文 — 答對直接進下一題</div>
+        <div class="typing-prompt" id="ty-prompt"></div>
+        <div class="q-phonetic" id="ty-phonetic" style="margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
           <button class="speak-btn" onclick="speakCurrent(0.88)" style="margin-top:0">▶ 提示發音</button>
           <button class="speak-btn" onclick="speakCurrent(0.6)" style="margin-top:0">🐢 慢速</button>
@@ -495,7 +495,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
         </div>
         <div id="ty-retry-badge" style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--accent2);display:none">🔁 複習中</div>
       </div>
-      <input class="typing-input" id="typingInput" placeholder="輸入挖空的英文單字… Enter 確認" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleTypingKey(event)" oninput="liveCheck()">
+      <input class="typing-input" id="typingInput" placeholder="輸入英文單字… Enter 確認" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleTypingKey(event)" oninput="liveCheck()">
       <!-- hint row: partial reveal -->
       <div class="typing-hint" id="typingHint" style="margin-top:10px;font-size:.78rem;letter-spacing:4px"></div>
       <!-- answer reveal with countdown -->
@@ -517,6 +517,61 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       <div class="result-breakdown" id="typingBreakdown"></div>
       <div id="typingMissed" style="margin-bottom:24px"></div>
       <button class="restart-btn" onclick="startTyping()">再來一次</button>
+    </div>
+  </div>
+</div>
+
+<!-- SENTENCE CONTEXT -->
+<div class="section" id="sec-sentence">
+  <div class="typing-area">
+    <div id="sentence-group-banner"></div>
+    <div class="group-complete" id="sentence-group-complete">
+      <div class="group-complete-icon">🎉</div>
+      <div class="group-complete-title">第 <span id="sentence-complete-gnum"></span> 組全部已懂！</div>
+      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
+      <button class="group-next-btn" id="sentence-next-group-btn" onclick="sentenceNextGroup()">繼續下一組 →</button>
+    </div>
+    <div id="sentenceGameArea">
+      <div class="typing-question">
+        <div class="quiz-type-label">✍️ 看例句填空 — 拼出挖空單字，答對直接進下一題</div>
+        <div class="card-example-front" id="st-sentence-en" style="margin-top:14px;font-size:1.05rem;color:var(--text);padding:14px 18px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:100%;text-align:center;line-height:1.6;font-style:italic"></div>
+        <div class="card-example-back" id="st-sentence-zh" style="margin-top:10px;font-size:.9rem;color:var(--accent);padding:10px 14px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--border);width:100%;text-align:center;font-weight:700"></div>
+        <div class="q-phonetic" id="st-phonetic" style="margin-top:10px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+          <button class="speak-btn" onclick="speakCurrent(0.88)" style="margin-top:0">▶ 提示發音</button>
+          <button class="speak-btn" onclick="speakCurrent(0.6)" style="margin-top:0">🐢 慢速</button>
+        </div>
+      </div>
+      <!-- progress bar -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div id="st-counter" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap"></div>
+        <div style="flex:1;height:2px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div id="st-progress-bar" style="height:100%;background:var(--accent3);transition:width .3s;border-radius:2px;width:0%"></div>
+        </div>
+        <div id="st-retry-badge" style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--accent2);display:none">🔁 複習中</div>
+      </div>
+      <input class="typing-input" id="sentenceInput" placeholder="輸入挖空的英文單字… Enter 確認" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleSentenceKey(event)" oninput="liveCheckSentence()">
+      <!-- hint row -->
+      <div class="typing-hint" id="sentenceHint" style="margin-top:10px;font-size:.78rem;letter-spacing:4px"></div>
+      <!-- answer reveal -->
+      <div id="sentenceAnswerWrap" style="display:none;margin-top:10px;padding:12px 16px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.25);border-radius:4px;text-align:center">
+        <div id="sentenceAnswer" style="font-family:'Space Mono',monospace;font-size:1rem;color:var(--accent2)"></div>
+        <div id="stCountdown" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:5px"></div>
+      </div>
+      <!-- wrong feedback flash -->
+      <div id="stWrongMsg" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--danger);text-align:center;min-height:20px;margin-top:8px"></div>
+      <!-- ghost buttons -->
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="ghost-btn" id="stShowBtn" onclick="stShowAnswer()">顯示答案</button>
+        <button class="ghost-btn" onclick="stSkip()">跳過</button>
+      </div>
+    </div>
+    <div class="result-screen" id="sentenceResult">
+      <div class="result-big" id="sentenceScore"></div>
+      <div class="result-label">答對率</div>
+      <div class="result-breakdown" id="sentenceBreakdown"></div>
+      <div id="sentenceMissed" style="margin-bottom:24px"></div>
+      <button class="restart-btn" onclick="startSentence()">再來一次</button>
     </div>
   </div>
 </div>
@@ -937,6 +992,7 @@ function switchMode(m,btn){
   if(m==='flashcard') initFlashcard();
   if(m==='quiz')      startQuiz();
   if(m==='typing')    startTyping();
+  if(m==='sentence')  startSentence();
   if(m==='srs')       renderSRS();
   if(m==='list')      { renderDatasetsList(); renderList(); }
   if(m==='addword')   refreshUpdatePanel();
@@ -1288,33 +1344,10 @@ function renderTyping(){
   const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
   const errN=tyErrMap[w.word]||0;
 
-  // Extract example sentence & mask target word
-  let sentenceEn = "";
-  let sentenceZh = "";
-
-  if (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) {
-    sentenceEn = w.examples[0].en;
-    sentenceZh = w.examples[0].zh ? `↳ ${w.examples[0].zh}` : '';
-  }
-
-  if (sentenceEn) {
-    const escWord = w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    let masked = sentenceEn.replace(new RegExp(`\\b${escWord}\\b`, 'gi'), '______');
-    if (!masked.includes('______')) {
-      masked = sentenceEn.replace(new RegExp(escWord, 'gi'), '______');
-    }
-    document.getElementById('ty-sentence-en').textContent = `“${masked}”`;
-    document.getElementById('ty-sentence-zh').textContent = sentenceZh;
-    document.getElementById('ty-sentence-zh').style.display = sentenceZh ? 'block' : 'none';
-  } else {
-    document.getElementById('ty-sentence-en').textContent = `“The target word is: ______ (${w.translation})”`;
-    document.getElementById('ty-sentence-zh').textContent = `↳ ${w.translation}`;
-    document.getElementById('ty-sentence-zh').style.display = 'block';
-  }
-
-  document.getElementById('ty-phonetic').textContent = w.phonetic;
-  document.getElementById('typingHint').textContent = buildPartialHint(w.word);
-  document.getElementById('ty-counter').textContent =
+  document.getElementById('ty-prompt').textContent=w.translation;
+  document.getElementById('ty-phonetic').textContent=w.phonetic;
+  document.getElementById('typingHint').textContent=buildPartialHint(w.word);
+  document.getElementById('ty-counter').textContent=
     `${Math.min(tyIdx+1,tyTotal)} / ${tyTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
   document.getElementById('ty-progress-bar').style.width=`${(doneCnt/grp.length)*100}%`;
   document.getElementById('ty-retry-badge').style.display=errN>0?'':'none';
@@ -1404,6 +1437,167 @@ function showTypingResult(){
   document.getElementById('typingResult').classList.add('show');
   if(isGroupDone(activeGrpIdx)) checkShowGroupDone('typing-group-complete','typing-complete-gnum','typing-next-group-btn');
   renderGrpBanner('typing-group-banner','selectTypingGroup');
+}
+
+// ═══════════════════════════════════════
+//  SENTENCE CONTEXT PRACTICE (✍️ 造句)
+// ═══════════════════════════════════════
+let stQueue=[], stIdx=0, stCorrect=0, stTotal=0;
+let stErrMap={};
+let stCountdownTimer=null, stAnswerShowing=false;
+
+function selectSentenceGroup(idx){ setActiveGrp(idx); startSentence(); }
+function sentenceNextGroup(){
+  if(activeGrpIdx<wordGroups.length-1){ setActiveGrp(activeGrpIdx+1); startSentence(); }
+}
+
+function startSentence(){
+  document.getElementById('sentenceResult').classList.remove('show');
+  document.getElementById('sentence-group-complete').classList.remove('show');
+  document.getElementById('sentenceGameArea').style.display='block';
+  renderGrpBanner('sentence-group-banner','selectSentenceGroup');
+  const grp=getActiveGroup();
+  stQueue=shuffle([...grp]);
+  stIdx=0; stCorrect=0; stTotal=grp.length; stErrMap={};
+  renderSentence();
+}
+
+function renderSentence(){
+  if(stCountdownTimer){ clearInterval(stCountdownTimer); stCountdownTimer=null; }
+  stAnswerShowing=false;
+  document.getElementById('sentenceAnswerWrap').style.display='none';
+  document.getElementById('stWrongMsg').textContent='';
+  document.getElementById('stShowBtn').disabled=false;
+
+  if(stIdx>=stQueue.length){
+    const notDone=getActiveGroup().filter(w=>getMastery(w.word)<2);
+    if(notDone.length){
+      stQueue.push(...shuffle(notDone));
+      showToast(`🔁 複習 ${notDone.length} 個未完成單字`);
+    } else { showSentenceResult(); return; }
+  }
+  if(stIdx>=stQueue.length){ showSentenceResult(); return; }
+
+  const w=stQueue[stIdx]; _currentWord=w.word;
+  const grp=getActiveGroup();
+  const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
+  const errN=stErrMap[w.word]||0;
+
+  // Extract example sentence & mask target word
+  let sentenceEn = "";
+  let sentenceZh = "";
+
+  if (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) {
+    sentenceEn = w.examples[0].en;
+    sentenceZh = w.examples[0].zh ? `↳ ${w.examples[0].zh}` : '';
+  }
+
+  if (sentenceEn) {
+    const escWord = w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let masked = sentenceEn.replace(new RegExp(`\\b${escWord}\\b`, 'gi'), '______');
+    if (!masked.includes('______')) {
+      masked = sentenceEn.replace(new RegExp(escWord, 'gi'), '______');
+    }
+    document.getElementById('st-sentence-en').textContent = `“${masked}”`;
+    document.getElementById('st-sentence-zh').textContent = sentenceZh;
+    document.getElementById('st-sentence-zh').style.display = sentenceZh ? 'block' : 'none';
+  } else {
+    document.getElementById('st-sentence-en').textContent = `“The target word is: ______ (${w.translation})”`;
+    document.getElementById('st-sentence-zh').textContent = `↳ ${w.translation}`;
+    document.getElementById('st-sentence-zh').style.display = 'block';
+  }
+
+  document.getElementById('st-phonetic').textContent = w.phonetic;
+  document.getElementById('sentenceHint').textContent = buildPartialHint(w.word);
+  document.getElementById('st-counter').textContent =
+    `${Math.min(stIdx+1,stTotal)} / ${stTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
+  document.getElementById('st-progress-bar').style.width=`${(doneCnt/grp.length)*100}%`;
+  document.getElementById('st-retry-badge').style.display=errN>0?'':'none';
+
+  const inp=document.getElementById('sentenceInput');
+  inp.value=''; inp.className='typing-input'; inp.disabled=false; inp.focus();
+}
+
+function liveCheckSentence(){
+  if(!stQueue[stIdx]) return;
+  const w=stQueue[stIdx];
+  const inp=document.getElementById('sentenceInput');
+  if(inp.value.trim().toLowerCase()===w.word.toLowerCase()){
+    inp.className='typing-input correct-input'; inp.disabled=true;
+    stCorrect++; streak++;
+    const errN=stErrMap[w.word]||0;
+    setMastery(w.word, errN===0?2:1);
+    delete stErrMap[w.word];
+    showToast(errN===0?'✓ 正確！':'△ 稍懂 — 繼續練習！');
+    setTimeout(()=>{ stIdx++; renderSentence(); },600);
+  }
+}
+
+function handleSentenceKey(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  if(stAnswerShowing){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); return; }
+  if(!stQueue[stIdx]) return;
+  const w=stQueue[stIdx];
+  const inp=document.getElementById('sentenceInput');
+  const val=inp.value.trim().toLowerCase(); if(!val) return;
+  if(val!==w.word.toLowerCase()){
+    inp.className='typing-input wrong-input';
+    stErrMap[w.word]=(stErrMap[w.word]||0)+1;
+    setMastery(w.word,0);
+    document.getElementById('stWrongMsg').textContent=`✕ 錯誤 (${stErrMap[w.word]}次) — 稍後再出現`;
+    setTimeout(()=>{ inp.className='typing-input'; inp.value=''; inp.focus();
+      document.getElementById('stWrongMsg').textContent=''; },500);
+  }
+}
+
+function stShowAnswer(){
+  if(stAnswerShowing||!stQueue[stIdx]) return;
+  const w=stQueue[stIdx]; stAnswerShowing=true;
+  stErrMap[w.word]=(stErrMap[w.word]||0)+1; setMastery(w.word,0);
+  document.getElementById('sentenceInput').disabled=true;
+  document.getElementById('sentenceAnswer').textContent=`${w.word}　${w.translation}`;
+  document.getElementById('sentenceAnswerWrap').style.display='block';
+  document.getElementById('stShowBtn').disabled=true;
+  let secs=5;
+  document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
+  stCountdownTimer=setInterval(()=>{
+    secs--;
+    if(secs<=0){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); }
+    else document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
+  },1000);
+}
+
+function stSkip(){
+  if(stCountdownTimer){ clearInterval(stCountdownTimer); stCountdownTimer=null; }
+  stIdx++; renderSentence();
+}
+
+function showSentenceResult(){
+  document.getElementById('sentenceGameArea').style.display='none';
+  const grp=getActiveGroup();
+  const doneCnt=grp.filter(w=>getMastery(w.word)===2).length;
+  const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
+  document.getElementById('sentenceScore').textContent=pct+'%';
+  const errWords=Object.entries(stErrMap).filter(([,v])=>v>0);
+  document.getElementById('sentenceBreakdown').innerHTML=`
+    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${stCorrect}</div><div class="rb-label">答對</div></div>
+    <div class="rb-box"><div class="rb-num" style="color:var(--danger)">${stTotal-stCorrect}</div><div class="rb-label">答錯</div></div>
+    <div class="rb-box"><div class="rb-num">${doneCnt}/${grp.length}</div><div class="rb-label">已懂</div></div>`;
+  const missed=document.getElementById('sentenceMissed');
+  missed.innerHTML=errWords.length
+    ? `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">需加強</div>`
+      +errWords.map(([w,c])=>{
+        const wObj=WORDS.find(x=>x.word===w);
+        return `<div style="display:flex;justify-content:space-between;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-bottom:5px;font-size:.82rem">
+          <span style="font-family:'Space Mono',monospace;color:var(--accent)">${escHtml(w)}</span>
+          <span style="color:var(--muted);flex:1;margin:0 10px">${wObj?escHtml(wObj.translation):''}</span>
+          <span style="font-family:'Space Mono',monospace;color:var(--accent2);font-size:.65rem">錯${c}次</span>
+        </div>`;
+      }).join('') : '';
+  document.getElementById('sentenceResult').classList.add('show');
+  if(isGroupDone(activeGrpIdx)) checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
+  renderGrpBanner('sentence-group-banner','selectSentenceGroup');
 }
     dictCorrect++; streak++;
     document.getElementById('dict-phonetic-reveal').textContent=w.phonetic;
