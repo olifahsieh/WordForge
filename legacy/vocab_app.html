@@ -1492,6 +1492,8 @@ function renderSentence(){
     sentenceZh = w.examples[0].zh ? `↳ ${w.examples[0].zh}` : '';
   }
 
+  const cleanTr = w.translation ? w.translation.replace(/^(n|v|adj|adv)\.\s*/i, '').split(/[；;,]/)[0] : '';
+
   if (sentenceEn) {
     const escWord = w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     let masked = sentenceEn.replace(new RegExp(`\\b${escWord}\\b`, 'gi'), '______');
@@ -1499,15 +1501,20 @@ function renderSentence(){
       masked = sentenceEn.replace(new RegExp(escWord, 'gi'), '______');
     }
     document.getElementById('st-sentence-en').textContent = `“${masked}”`;
-    document.getElementById('st-sentence-zh').textContent = sentenceZh;
+
+    let htmlZh = sentenceZh;
+    if (cleanTr && cleanTr.length >= 1 && sentenceZh.includes(cleanTr)) {
+      htmlZh = sentenceZh.replace(cleanTr, `<mark style="background:rgba(255,170,0,0.25);color:var(--accent3);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,170,0,0.4)">${cleanTr}</mark>`);
+    }
+    document.getElementById('st-sentence-zh').innerHTML = htmlZh;
     document.getElementById('st-sentence-zh').style.display = sentenceZh ? 'block' : 'none';
   } else {
     document.getElementById('st-sentence-en').textContent = `“The target word is: ______ (${w.translation})”`;
-    document.getElementById('st-sentence-zh').textContent = `↳ ${w.translation}`;
+    document.getElementById('st-sentence-zh').innerHTML = `↳ ${w.translation}`;
     document.getElementById('st-sentence-zh').style.display = 'block';
   }
 
-  document.getElementById('st-phonetic').textContent = w.phonetic;
+  document.getElementById('st-phonetic').innerHTML = `<span style="color:var(--accent);font-weight:700;margin-right:8px">[${w.translation}]</span> ${w.phonetic}`;
   document.getElementById('sentenceHint').textContent = buildPartialHint(w.word);
   document.getElementById('st-counter').textContent =
     `${Math.min(stIdx+1,stTotal)} / ${stTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
