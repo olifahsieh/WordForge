@@ -366,8 +366,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 <div class="mode-tabs">
   <button class="tab-btn active"  data-mode="flashcard" onclick="switchMode('flashcard',this)">🃏 單字卡</button>
   <button class="tab-btn"         data-mode="quiz"      onclick="switchMode('quiz',this)">🎯 測驗</button>
-  <button class="tab-btn"         data-mode="typing"    onclick="switchMode('typing',this)">⌨️ 拼字</button>
-  <button class="tab-btn"         data-mode="dictation" onclick="switchMode('dictation',this)">🔊 聽音拼字</button>
+  <button class="tab-btn"         data-mode="typing"    onclick="switchMode('typing',this)">✍️ 造句</button>
   <button class="tab-btn"         data-mode="srs"       onclick="switchMode('srs',this)">🧠 記憶曲線</button>
   <button class="tab-btn"         data-mode="list"      onclick="switchMode('list',this)">📋 單字表</button>
   <button class="tab-btn"         data-mode="addword"   onclick="switchMode('addword',this)">✏️ 新增單字</button>
@@ -467,7 +466,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   </div>
 </div>
 
-<!-- TYPING -->
+<!-- TYPING / SENTENCE CONTEXT -->
 <div class="section" id="sec-typing">
   <div class="typing-area">
     <div id="typing-group-banner"></div>
@@ -479,10 +478,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     </div>
     <div id="typingGameArea">
       <div class="typing-question">
-        <div class="quiz-type-label">看中文，打英文 — 答對直接進下一題</div>
-        <div class="typing-prompt" id="ty-prompt"></div>
-        <div class="q-phonetic" id="ty-phonetic" style="margin-bottom:10px"></div>
-        <button class="speak-btn" onclick="speakCurrent()" style="margin-top:0">▶ 提示發音</button>
+        <div class="quiz-type-label">✍️ 看例句填空 — 拼出挖空單字，答對直接進下一題</div>
+        <div class="card-example-front" id="ty-sentence-en" style="margin-top:14px;font-size:1.05rem;color:var(--text);padding:14px 18px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:100%;text-align:center;line-height:1.6;font-style:italic"></div>
+        <div class="card-example-back" id="ty-sentence-zh" style="margin-top:10px;font-size:.9rem;color:var(--accent);padding:10px 14px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--border);width:100%;text-align:center;font-weight:700"></div>
+        <div class="q-phonetic" id="ty-phonetic" style="margin-top:10px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+          <button class="speak-btn" onclick="speakCurrent(0.88)" style="margin-top:0">▶ 提示發音</button>
+          <button class="speak-btn" onclick="speakCurrent(0.6)" style="margin-top:0">🐢 慢速</button>
+        </div>
       </div>
       <!-- progress bar for SRS retry -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -492,7 +495,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
         </div>
         <div id="ty-retry-badge" style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--accent2);display:none">🔁 複習中</div>
       </div>
-      <input class="typing-input" id="typingInput" placeholder="輸入英文單字… Enter 確認" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleTypingKey(event)" oninput="liveCheck()">
+      <input class="typing-input" id="typingInput" placeholder="輸入挖空的英文單字… Enter 確認" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleTypingKey(event)" oninput="liveCheck()">
       <!-- hint row: partial reveal -->
       <div class="typing-hint" id="typingHint" style="margin-top:10px;font-size:.78rem;letter-spacing:4px"></div>
       <!-- answer reveal with countdown -->
@@ -502,7 +505,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       </div>
       <!-- wrong feedback flash -->
       <div id="tyWrongMsg" style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--danger);text-align:center;min-height:20px;margin-top:8px"></div>
-      <!-- only 2 ghost buttons -->
+      <!-- ghost buttons -->
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="ghost-btn" id="tyShowBtn" onclick="tyShowAnswer()">顯示答案</button>
         <button class="ghost-btn" onclick="tySkip()">跳過</button>
@@ -514,49 +517,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       <div class="result-breakdown" id="typingBreakdown"></div>
       <div id="typingMissed" style="margin-bottom:24px"></div>
       <button class="restart-btn" onclick="startTyping()">再來一次</button>
-    </div>
-  </div>
-</div>
-
-<!-- DICTATION -->
-<div class="section" id="sec-dictation">
-  <div class="typing-area">
-    <div id="dict-group-banner"></div>
-    <div class="group-complete" id="dict-group-complete">
-      <div class="group-complete-icon">🎉</div>
-      <div class="group-complete-title">第 <span id="dict-complete-gnum"></span> 組全部已懂！</div>
-      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
-      <button class="group-next-btn" id="dict-next-group-btn" onclick="dictNextGroup()">繼續下一組 →</button>
-    </div>
-    <div id="dictGameArea">
-      <div class="dictation-banner">
-        <div class="quiz-type-label" style="margin-bottom:14px">🔊 聽音拼字 — 聽到發音，拼出英文單字</div>
-        <div class="dictation-btns">
-          <button class="big-speak-btn" onclick="playDictWord()">▶ 播放</button>
-          <button class="speak-btn" onclick="playDictSlow()" style="margin-top:0">🐢 慢速</button>
-        </div>
-        <div id="dict-phonetic-reveal" style="font-family:'Space Mono',monospace;font-size:.8rem;color:var(--muted);margin-top:11px;min-height:20px"></div>
-      </div>
-      <input class="typing-input" id="dictInput" placeholder="拼出你聽到的單字…" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleDictKey(event)">
-      <div class="typing-hint" id="dictHint"></div>
-      <div class="typing-answer" id="dictAnswer"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-        <button class="ghost-btn" onclick="tyShowDictAnswer()">顯示答案</button>
-        <button class="ghost-btn" onclick="skipDict()">跳過</button>
-      </div>
-      <div class="mastery-row" id="dictMasteryRow" style="display:none;margin-top:16px;">
-        <button class="mst-btn l0" onclick="dictMastery(0)">✕ 不熟</button>
-        <div style="flex:1"></div>
-        <button class="mst-btn l1" onclick="dictMastery(1)">△ 稍懂</button>
-        <button class="mst-btn l2" onclick="dictMastery(2)">✓ 已懂</button>
-      </div>
-      <div id="dict-counter" style="margin-top:9px;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);text-align:center"></div>
-    </div>
-    <div class="result-screen" id="dictResult">
-      <div class="result-big" id="dictScore"></div>
-      <div class="result-label">答對率</div>
-      <div class="result-breakdown" id="dictBreakdown"></div>
-      <button class="restart-btn" onclick="startDict()">再來一次</button>
     </div>
   </div>
 </div>
@@ -977,7 +937,6 @@ function switchMode(m,btn){
   if(m==='flashcard') initFlashcard();
   if(m==='quiz')      startQuiz();
   if(m==='typing')    startTyping();
-  if(m==='dictation') startDict();
   if(m==='srs')       renderSRS();
   if(m==='list')      { renderDatasetsList(); renderList(); }
   if(m==='addword')   refreshUpdatePanel();
@@ -1329,10 +1288,33 @@ function renderTyping(){
   const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
   const errN=tyErrMap[w.word]||0;
 
-  document.getElementById('ty-prompt').textContent=w.translation;
-  document.getElementById('ty-phonetic').textContent=w.phonetic;
-  document.getElementById('typingHint').textContent=buildPartialHint(w.word);
-  document.getElementById('ty-counter').textContent=
+  // Extract example sentence & mask target word
+  let sentenceEn = "";
+  let sentenceZh = "";
+
+  if (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) {
+    sentenceEn = w.examples[0].en;
+    sentenceZh = w.examples[0].zh ? `↳ ${w.examples[0].zh}` : '';
+  }
+
+  if (sentenceEn) {
+    const escWord = w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let masked = sentenceEn.replace(new RegExp(`\\b${escWord}\\b`, 'gi'), '______');
+    if (!masked.includes('______')) {
+      masked = sentenceEn.replace(new RegExp(escWord, 'gi'), '______');
+    }
+    document.getElementById('ty-sentence-en').textContent = `“${masked}”`;
+    document.getElementById('ty-sentence-zh').textContent = sentenceZh;
+    document.getElementById('ty-sentence-zh').style.display = sentenceZh ? 'block' : 'none';
+  } else {
+    document.getElementById('ty-sentence-en').textContent = `“The target word is: ______ (${w.translation})”`;
+    document.getElementById('ty-sentence-zh').textContent = `↳ ${w.translation}`;
+    document.getElementById('ty-sentence-zh').style.display = 'block';
+  }
+
+  document.getElementById('ty-phonetic').textContent = w.phonetic;
+  document.getElementById('typingHint').textContent = buildPartialHint(w.word);
+  document.getElementById('ty-counter').textContent =
     `${Math.min(tyIdx+1,tyTotal)} / ${tyTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
   document.getElementById('ty-progress-bar').style.width=`${(doneCnt/grp.length)*100}%`;
   document.getElementById('ty-retry-badge').style.display=errN>0?'':'none';
@@ -1423,66 +1405,6 @@ function showTypingResult(){
   if(isGroupDone(activeGrpIdx)) checkShowGroupDone('typing-group-complete','typing-complete-gnum','typing-next-group-btn');
   renderGrpBanner('typing-group-banner','selectTypingGroup');
 }
-
-// ═══════════════════════════════════════
-//  DICTATION — GROUP-BASED
-//  Progressive hint on wrong, mastery buttons after answer
-// ═══════════════════════════════════════
-function hintStr(word,reveal){
-  return word.split('').map((c,i)=>i<reveal?c:(c===' '?' ':'_')).join(' ');
-}
-let dictQueue=[],dictIdx=0,dictCorrect=0,dictHint=0,dictAnswered=false;
-
-function selectDictGroup(idx){ setActiveGrp(idx); startDict(); }
-function dictNextGroup(){
-  if(activeGrpIdx<wordGroups.length-1){ setActiveGrp(activeGrpIdx+1); startDict(); }
-}
-
-function startDict(){
-  document.getElementById('dictResult').classList.remove('show');
-  document.getElementById('dict-group-complete').classList.remove('show');
-  document.getElementById('dictGameArea').style.display='block';
-  renderGrpBanner('dict-group-banner','selectDictGroup');
-  const grp=getActiveGroup();
-  dictQueue=shuffle([...grp]);
-  dictIdx=0; dictCorrect=0; dictHint=0; dictAnswered=false;
-  renderDict();
-}
-
-function renderDict(){
-  if(dictIdx>=dictQueue.length){
-    const notDone=getActiveGroup().filter(w=>getMastery(w.word)<2);
-    if(notDone.length){ dictQueue.push(...shuffle(notDone)); showToast(`🔁 複習 ${notDone.length} 個未完成`); }
-    else { showDictResult(); return; }
-  }
-  if(dictIdx>=dictQueue.length){ showDictResult(); return; }
-  const w=dictQueue[dictIdx]; _currentWord=w.word;
-  const grp=getActiveGroup();
-  const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
-  dictHint=0; dictAnswered=false;
-  const inp=document.getElementById('dictInput');
-  inp.value=''; inp.className='typing-input'; inp.disabled=false;
-  document.getElementById('dictHint').textContent=hintStr(w.word,0);
-  document.getElementById('dictAnswer').textContent='';
-  document.getElementById('dictAnswer').style.color='var(--accent2)';
-  document.getElementById('dict-phonetic-reveal').textContent='';
-  document.getElementById('dictMasteryRow').style.display='none';
-  document.getElementById('dict-counter').textContent=
-    `${Math.min(dictIdx+1,dictQueue.length)} / ${dictQueue.length}  ·  ${doneCnt}/${grp.length} 已懂`;
-  setTimeout(()=>speak(w.word),350);
-}
-
-function playDictWord(){ speak(_currentWord); }
-function playDictSlow(){ speak(_currentWord,0.6); }
-function handleDictKey(e){ if(e.key==='Enter'){e.preventDefault();checkDict();} }
-
-function checkDict(){
-  if(dictAnswered||!dictQueue[dictIdx]) return;
-  const w=dictQueue[dictIdx];
-  const inp=document.getElementById('dictInput');
-  const val=inp.value.trim().toLowerCase(); if(!val) return;
-  if(val===w.word.toLowerCase()){
-    inp.className='typing-input correct-input'; inp.disabled=true;
     dictCorrect++; streak++;
     document.getElementById('dict-phonetic-reveal').textContent=w.phonetic;
     const da=document.getElementById('dictAnswer');
