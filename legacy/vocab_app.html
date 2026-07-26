@@ -2501,9 +2501,36 @@ async function callDictAPI(word) {
     }
   }
 
-  // POS name mapping: Google Translate returns Chinese POS names, dictionary API uses English
-  const posZhToEn = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adjective', '副詞': 'adverb', '介詞': 'preposition', '連詞': 'conjunction', '感嘆詞': 'interjection', '代詞': 'pronoun' };
-  const posEnToZh = Object.fromEntries(Object.entries(posZhToEn).map(([k, v]) => [v, k]));
+  // Ensure headword Chinese translation is resolved synchronously
+  if (!zhWordTr || zhWordTr.toLowerCase() === entry.word.toLowerCase()) {
+    try {
+      const tr = await translateToZh(entry.word);
+      if (tr) zhWordTr = tr;
+    } catch(e) {}
+  }
+
+  // Ensure every example sentence has Chinese translation synchronously
+  for (const exObj of rawExamples) {
+    if (exObj.en && !exObj.zh) {
+      try {
+        exObj.zh = await translateToZh(exObj.en);
+      } catch(e) {
+        if (zhWordTr) exObj.zh = `與「${zhWordTr}」相關的例句`;
+      }
+    }
+  }
+
+  // Ensure definitions have defZh translated
+  (definitions || []).forEach(pos => {
+    if (pos && pos.defs && Array.isArray(pos.defs)) {
+      pos.defs.forEach(d => {
+        if (d && !d.defZh) {
+          const gtTerms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
+          d.defZh = gtTerms.length ? gtTerms.join('、 ') : (zhWordTr || gtPrimaryTr || '');
+        }
+      });
+    }
+  });
 
   // Build concise POS translations: primary translation first, then unique dict terms, max 3
   const posCompactParts = [];
@@ -2511,7 +2538,6 @@ async function callDictAPI(word) {
     const posKey = (p.pos || '').toLowerCase().trim();
     const zhKey = posEnToZh[posKey] || posKey;
     const dictTerms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter((t) => t.length <= 6);
-    // Start with primary translation, then add unique dict terms
     const merged = [];
     if (gtPrimaryTr && gtPrimaryTr.length <= 6) {
       merged.push(gtPrimaryTr);
@@ -2525,10 +2551,14 @@ async function callDictAPI(word) {
     if (!posZh) {
       posZh = zhWordTr;
     }
-    posCompactParts.push(`${p.pos}. ${posZh}`);
+    if (posZh) {
+      posCompactParts.push(`${p.pos}. ${posZh}`);
+    }
   }
 
-  const compactList = posCompactParts.length ? posCompactParts.join('; ') : `n/v. ${zhWordTr}`;
+  let compactList = posCompactParts.length ? posCompactParts.join('; ') : (zhWordTr ? `def. ${zhWordTr}` : '');
+  if (!compactList && gtPrimaryTr) compactList = `def. ${gtPrimaryTr}`;
+  if (!compactList) compactList = `def. ${entry.word}`;
 
   // Background translation for detailed definitions and examples
   setTimeout(async () => {
