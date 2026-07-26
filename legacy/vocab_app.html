@@ -223,9 +223,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 .rb-label{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
 
 /* ══ GROUP SELECTOR ══ */
-.group-banner{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:20px;display:flex;align-items:center;gap:10px;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
-.group-label{font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);flex-shrink:0;}
-.group-pills{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;flex:1;min-width:0;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.group-banner{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;}
+.group-banner-top{display:flex;justify-content:space-between;align-items:center;width:100%;}
+.group-label{font-family:'Space Mono',monospace;font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.group-info{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);white-space:nowrap;}
+.group-info strong{color:var(--accent);}
+.group-pills{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;width:100%;min-width:0;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
 .group-pills::-webkit-scrollbar{height:4px;}
 .group-pills::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:2px;}
 .group-pills::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
@@ -235,8 +238,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 .group-pill.done{border-color:var(--success);color:var(--success);}
 .group-pill.done.active{background:var(--success);color:var(--bg);}
 .group-pill.locked{opacity:.35;cursor:default;pointer-events:none;}
-.group-info{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-left:auto;padding-left:8px;border-left:1px solid var(--border);}
-.group-info strong{color:var(--accent);}
 /* group complete celebration */
 .group-complete{text-align:center;padding:40px 20px;background:rgba(71,255,176,.04);border:1px solid rgba(71,255,176,.2);border-radius:6px;margin-bottom:20px;display:none;}
 .group-complete.show{display:block;}
@@ -989,9 +990,11 @@ function renderGrpBanner(containerId, clickFn){
   }
 
   el.innerHTML=`<div class="group-banner">
-    <span class="group-label">字組</span>
+    <div class="group-banner-top">
+      <span class="group-label">字組選擇</span>
+      <span class="group-info">${infoHtml}</span>
+    </div>
     <div class="group-pills">${srsPill}${pills}</div>
-    <span class="group-info">${infoHtml}</span>
   </div>`;
 }
 
