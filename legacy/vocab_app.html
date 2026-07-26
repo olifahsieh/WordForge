@@ -627,7 +627,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   </div>
   <div class="upload-panel" style="margin-bottom:20px">
     <h3>🗂 我的單字集</h3>
-    <div class="datasets-list" id="datasetsList"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <select id="myDatasetSelect" onchange="loadDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+        <option value="">— 無自訂單字集 —</option>
+      </select>
+      <button id="myDatasetDelBtn" onclick="deleteDataset(document.getElementById('myDatasetSelect').value)" title="刪除選中字庫" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:8px 12px;border:1px solid var(--danger);border-radius:2px;background:transparent;color:var(--danger);cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--danger)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">🗑 刪除</button>
+    </div>
   </div>
   <div class="list-controls">
     <input class="search-input" id="searchInput" placeholder="搜尋單字或翻譯…" oninput="filterList()">
@@ -2126,6 +2131,8 @@ function loadDataset(id){
   showToast(`✓ 已載入「${ds.name}」`);
 }
 function deleteDataset(id){
+  if(!id){ showToast('請先選擇要刪除的單字集'); return; }
+  if(!confirm(`確定刪除「${datasets.find(d=>d.id===id)?.name||id}」？`)) return;
   datasets=datasets.filter(d=>d.id!==id);
   if(activeDatasetId===id){ 
     if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) loadDataset(window.IELTS_DATASETS[0].id);
@@ -2135,26 +2142,35 @@ function deleteDataset(id){
 }
 
 function renderDatasetsList(){
-  const container = document.getElementById('datasetsList');
-  if(!container) return;
-  container.innerHTML = '';
-  if(!datasets || datasets.length===0){
-    container.innerHTML = `<div class="empty-state">尚未建立字庫</div>`;
+  const sel = document.getElementById('myDatasetSelect');
+  const delBtn = document.getElementById('myDatasetDelBtn');
+  if(!sel) return;
+
+  if(!datasets || datasets.length === 0){
+    sel.innerHTML = '<option value="">— 無自訂單字集 —</option>';
+    if(delBtn) delBtn.style.display = 'none';
     return;
   }
+
+  if(delBtn) delBtn.style.display = '';
+  sel.innerHTML = '';
   datasets.forEach(ds => {
-    const isActive = ds.id===activeDatasetId;
-    const item = document.createElement('div');
-    item.className = 'dataset-item' + (isActive?' active-set':'');
-    item.innerHTML = `
-      <span class="dataset-name">${escHtml(ds.name)}</span>
-      <span class="dataset-meta">${escHtml(ds.date)} • ${ds.count||0}字</span>
-      <div class="dataset-actions">
-        <button class="ds-btn load" onclick="loadDataset('${ds.id}')">載入</button>
-        <button class="ds-btn del" onclick="deleteDataset('${ds.id}')">刪除</button>
-      </div>`;
-    container.appendChild(item);
+    const opt = document.createElement('option');
+    opt.value = ds.id;
+    opt.textContent = `${ds.name}（${ds.count||0}字）`;
+    if(ds.id === activeDatasetId) opt.selected = true;
+    sel.appendChild(opt);
   });
+
+  // If active dataset is one of mine, sync select
+  const activeIsCustom = datasets.some(d => d.id === activeDatasetId);
+  if(!activeIsCustom) {
+    const firstOpt = document.createElement('option');
+    firstOpt.value = '';
+    firstOpt.disabled = true;
+    firstOpt.textContent = '— 選擇自訂字庫 —';
+    sel.insertBefore(firstOpt, sel.firstChild);
+  }
 }
 
 async function translateToZh(text) {
