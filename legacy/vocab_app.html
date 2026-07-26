@@ -2499,7 +2499,8 @@ let updSelected = new Set();  // word strings selected in manual mode
 function isIncomplete(w){
   const tr = (w.translation||'').trim();
   const ph = (w.phonetic||'').trim();
-  return ph==='--' || ph==='' || tr.startsWith('web.') || tr.length<5;
+  const hasEx = w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en;
+  return ph==='--' || ph==='' || tr.startsWith('web.') || tr.length<5 || !hasEx;
 }
 
 function getUpdateCandidates(){
