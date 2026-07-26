@@ -1668,6 +1668,10 @@ function getAllGlobalWords() {
 
 function setSRSFilter(mode){
   srsFilterMode = mode;
+  if (mode === 'group' && activeGrpIdx === -1) {
+    activeGrpIdx = 0;
+    localStorage.setItem('wf_active_group', 0);
+  }
   document.getElementById('srs-filter-memory').classList.toggle('active', mode==='memory');
   document.getElementById('srs-filter-dataset').classList.toggle('active', mode==='dataset');
   document.getElementById('srs-filter-group').classList.toggle('active', mode==='group');
@@ -1676,8 +1680,7 @@ function setSRSFilter(mode){
 }
 
 function selectSRSGroup(idx){
-  setActiveGrp(idx);
-  renderSRS();
+  selectGlobalGroup(idx);
 }
 
 function getDueWords(){
@@ -1687,7 +1690,8 @@ function getDueWords(){
     const all = getAllGlobalWords();
     baseList = all.filter(w => getMastery(w.word) >= 0);
   } else if (srsFilterMode === 'group') {
-    baseList = getActiveGroup();
+    const grpIdx = activeGrpIdx >= 0 ? activeGrpIdx : 0;
+    baseList = wordGroups[grpIdx] || [];
   } else {
     baseList = WORDS;
   }
@@ -1707,7 +1711,8 @@ function renderSRS(){
     const all = getAllGlobalWords();
     baseList = all.filter(w => getMastery(w.word) >= 0);
   } else if (srsFilterMode === 'group') {
-    baseList = getActiveGroup();
+    const grpIdx = activeGrpIdx >= 0 ? activeGrpIdx : 0;
+    baseList = wordGroups[grpIdx] || [];
   } else {
     baseList = WORDS;
   }
