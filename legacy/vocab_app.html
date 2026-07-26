@@ -615,8 +615,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 
 <!-- WORD LIST -->
 <div class="section" id="sec-list">
+  <div class="upload-panel" style="margin-bottom:14px">
+    <h3>📚 雅思3000核心字庫</h3>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">3632個核心字彙，依22個主題分類</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="ieltsChapterSelect" onchange="loadIELTSChapter(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+        <option value="">— 選擇章節 —</option>
+      </select>
+      <button onclick="loadIELTSChapter(document.getElementById('ieltsChapterSelect').value)" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:8px 14px;border:1px solid var(--accent);border-radius:2px;background:transparent;color:var(--accent);cursor:pointer;letter-spacing:.5px;text-transform:uppercase;transition:all .15s" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">載入</button>
+    </div>
+  </div>
   <div class="upload-panel" style="margin-bottom:20px">
-    <h3>🗂 單字集紀錄</h3>
+    <h3>🗂 我的單字集</h3>
     <div class="datasets-list" id="datasetsList"></div>
   </div>
   <div class="list-controls">
@@ -630,6 +640,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
     <tbody id="wordTableBody"></tbody>
   </table>
 </div>
+
 
 <!-- WORD DETAIL MODAL -->
 <div id="wordDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
@@ -2874,6 +2885,31 @@ function addUpdItem(word, tr, status, changed=false){
 // Call refreshUpdatePanel when switching to addword mode
 
 // ═══════════════════════════════════════
+//  IELTS 章節下拉式選單
+// ═══════════════════════════════════════
+function populateIELTSSelect() {
+  const sel = document.getElementById('ieltsChapterSelect');
+  if (!sel || !window.IELTS_DATASETS) return;
+  sel.innerHTML = '<option value="">— 選擇章節 —</option>';
+  window.IELTS_DATASETS.forEach(ds => {
+    const opt = document.createElement('option');
+    opt.value = ds.id;
+    opt.textContent = `${ds.name} (${ds.count}字)`;
+    if (ds.id === activeDatasetId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function loadIELTSChapter(id) {
+  if (!id) return;
+  loadDataset(id);
+  // sync select state
+  const sel = document.getElementById('ieltsChapterSelect');
+  if (sel) sel.value = id;
+}
+
+
+// ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
 (function init() {
@@ -2888,6 +2924,7 @@ function addUpdItem(word, tr, status, changed=false){
   // Load the selected dataset and initialise UI
   loadDataset(activeDatasetId);
   initDropZone();
+  populateIELTSSelect();
 })();
 </script>
 <script>
