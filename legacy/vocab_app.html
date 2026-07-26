@@ -866,27 +866,33 @@ window.loadFromCloud = async function() {
       if (data.masteryMap) masteryMap = data.masteryMap;
       if (data.srsMap) srsMap = data.srsMap;
       if (data.reviewHistory) reviewHistory = data.reviewHistory;
-      if (data.datasets) datasets = data.datasets;
+      
+      // Merge remote datasets with local datasets so custom datasets are never lost
+      if (Array.isArray(data.datasets) && data.datasets.length > 0) {
+        const localDsMap = new Map(datasets.map(d => [d.id, d]));
+        data.datasets.forEach(rd => {
+          if (rd && rd.id && Array.isArray(rd.words) && rd.words.length > 0) {
+            localDsMap.set(rd.id, rd);
+          }
+        });
+        datasets = Array.from(localDsMap.values());
+      }
+      
       if (data.activeDatasetId) activeDatasetId = data.activeDatasetId;
       if (data.activeGrpIdx !== undefined) activeGrpIdx = data.activeGrpIdx;
       if (data.streak !== undefined) streak = data.streak;
       
-      // Save locally to keep in sync
-      localStorage.setItem('wf_mastery',   JSON.stringify(masteryMap));
-      localStorage.setItem('wf_srs',       JSON.stringify(srsMap));
-      localStorage.setItem('wf_history',   JSON.stringify(reviewHistory));
-      localStorage.setItem('wf_datasets',  JSON.stringify(datasets));
-      localStorage.setItem('wf_active_dataset', activeDatasetId);
-      localStorage.setItem('wf_active_group',   activeGrpIdx);
-      localStorage.setItem('wf_streak',    streak);
-      
       loadDataset(activeDatasetId);
-      if (typeof switchMode === 'function') switchMode(currentMode);
       showToast("☁️ 雲端同步成功！");
+    } else {
+      // First time logging in: push local data to cloud
+      saveAll();
+      showToast("☁️ 已為您建立雲端備份！");
     }
   } catch(e) {
     console.error("Cloud load failed", e);
-    showToast("雲端同步失敗");
+    loadDataset(activeDatasetId);
+    showToast("⚠️ 雲端讀取失敗，已載入本機備份字庫");
   }
 };
 function getMastery(w){ return masteryMap[w]??-1; }
@@ -2074,14 +2080,30 @@ function confirmImport(){
 }
 function cancelImport(){ pendingWords=[]; pendingFileName=''; document.getElementById('previewPanel').classList.remove('show'); }
 function loadDataset(id){
-  let ds=datasets.find(d=>d.id===id); 
-  if(!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d=>d.id===id);
-  if(!ds) return;
-  WORDS.length=0; ds.words.forEach(w=>WORDS.push(w));
-  activeDatasetId=id;
+  let ds = datasets.find(d => d.id === id); 
+  if (!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d => d.id === id);
+  
+  // FAILSAFE: If dataset is missing or undefined, fall back to first available dataset or built-in chapter 1
+  if (!ds) {
+    if (datasets.length > 0) {
+      ds = datasets[0];
+    } else if (window.IELTS_DATASETS && window.IELTS_DATASETS.length > 0) {
+      ds = window.IELTS_DATASETS[0];
+    }
+  }
+  
+  if (!ds) return;
+
+  WORDS.length = 0;
+  (ds.words || []).forEach(w => WORDS.push(w));
+  activeDatasetId = ds.id;
+  localStorage.setItem('wf_active_dataset', activeDatasetId);
+
   localStorage.removeItem('wf_group_order');
   buildGroups();
-  saveAll(); updateHeader(); renderDatasetsList();
+  saveAll();
+  updateHeader();
+  renderDatasetsList();
 
   if(currentMode==='quiz') startQuiz();
   else if(currentMode==='typing') startTyping();
@@ -2822,20 +2844,14 @@ function addUpdItem(word, tr, status, changed=false){
 //  INIT
 // ═══════════════════════════════════════
 (function init(){
-  if(activeDatasetId==='builtin'){
+  if(activeDatasetId==='builtin' || !activeDatasetId){
     if(window.IELTS_DATASETS && window.IELTS_DATASETS.length>0) {
       activeDatasetId = window.IELTS_DATASETS[0].id;
       localStorage.setItem('wf_active_dataset', activeDatasetId);
     }
   }
   
-  let ds=datasets.find(d=>d.id===activeDatasetId);
-  if(!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d=>d.id===activeDatasetId);
-  if(ds){ WORDS.length=0; ds.words.forEach(w=>WORDS.push(w)); }
-
-  buildGroups();
-  updateHeader();
-  initFlashcard();
+  loadDataset(activeDatasetId);
   initDropZone();
 })();
 </script>
