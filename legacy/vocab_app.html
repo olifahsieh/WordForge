@@ -589,7 +589,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span class="srs-queue-title">✦ 今日複習佇列</span>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="group-pill active" id="srs-filter-memory" onclick="setSRSFilter('memory')">🧠 記憶字庫</button>
+          <button class="group-pill active" id="srs-filter-memory" onclick="setSRSFilter('memory')">記憶字庫</button>
           <button class="group-pill" id="srs-filter-group" onclick="setSRSFilter('group')">🎯 當前字組</button>
           <button class="group-pill" id="srs-filter-dataset" onclick="setSRSFilter('dataset')">📁 本單字集</button>
         </div>
@@ -971,7 +971,7 @@ function renderGrpBanner(containerId, clickFn){
   const dueCount = getDueWords().length;
   const srsActive = activeGrpIdx === -1;
   const srsCls = 'group-pill' + (srsActive ? ' active' : '') + (dueCount === 0 ? ' done' : '');
-  const srsPill = `<button class="${srsCls}" onclick="selectGlobalGroup(-1)" title="記憶字庫（今日需複習 ${dueCount} 個單字）" style="background:${srsActive?'var(--accent3)':'rgba(255,170,0,0.12)'};color:${srsActive?'#000':'var(--accent3)'};border-color:var(--accent3);font-weight:700">🧠 記憶字庫 (${dueCount})</button>`;
+  const srsPill = `<button class="${srsCls}" onclick="selectGlobalGroup(-1)" title="記憶字庫（今日需複習 ${dueCount} 個單字）" style="background:${srsActive?'var(--accent3)':'rgba(255,170,0,0.12)'};color:${srsActive?'#000':'var(--accent3)'};border-color:var(--accent3);font-weight:700">記憶字庫 (${dueCount})</button>`;
 
   const pills=wordGroups.map((g,i)=>{
     const done=isGroupDone(i);
