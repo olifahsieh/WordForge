@@ -2143,7 +2143,22 @@ async function callDictAPI(word) {
   });
 
   if (rawExamples.length === 0) {
-    // Keep empty if no examples
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${query}&langpair=en|zh-TW`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (mmRes.ok) {
+        const mmData = await mmRes.json();
+        const matches = mmData.matches || [];
+        for (const m of matches) {
+          if (m.segment && m.segment.toLowerCase().includes(word.toLowerCase()) && m.segment.length < 140 && m.translation && !m.translation.startsWith('MYMEMORY')) {
+            rawExamples.push({ en: m.segment.trim(), zh: m.translation.trim() });
+            if (rawExamples.length >= 2) break;
+          }
+        }
+      }
+    } catch(e) {}
   }
 
   // Parallel non-blocking translation fetching with 1.5s max timeout
