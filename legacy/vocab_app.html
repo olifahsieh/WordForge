@@ -661,12 +661,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
         <div style="font-size:1.05rem;color:var(--accent);background:var(--surface2);padding:10px 14px;border-radius:6px;margin-bottom:18px;border:1px solid var(--border);font-weight:700">
           <span id="lr-direct-tr"></span>
         </div>
+        <div class="lookup-section" id="lr-examples-section" style="display:none">
+          <div class="lookup-section-title" style="color:var(--accent)">💬 中英文例句 Examples</div>
+          <div id="lr-examples"></div>
+        </div>
         <div class="lookup-section">
-          <div class="lookup-section-title">詞性與字義</div>
+          <div class="lookup-section-title">📖 詞性與詳細字義 Definitions</div>
           <div id="lr-definitions"></div>
         </div>
         <div class="lookup-section" id="lr-forms-section">
-          <div class="lookup-section-title">詞形變化</div>
+          <div class="lookup-section-title">詞形變化 Forms</div>
           <div class="forms-row" id="lr-forms"></div>
         </div>
         <div class="lookup-section" id="lr-synonyms-section" style="display:none">
@@ -2602,59 +2606,111 @@ function renderLookupResult(data){
   const lrPhonetic = document.getElementById('lr-phonetic');
   if (lrPhonetic) lrPhonetic.textContent = data.phonetic||'';
   const lrDirectTr = document.getElementById('lr-direct-tr');
-  if (lrDirectTr) lrDirectTr.textContent = data.translation_compact || data.zhWordTr || '';
+  const primaryTr = data.translation_compact || data.zhWordTr || '';
+  if (lrDirectTr) lrDirectTr.textContent = primaryTr;
+
+  // Examples
+  const exSection = document.getElementById('lr-examples-section');
+  const exEl = document.getElementById('lr-examples');
+  if (exSection && exEl) {
+    const rawEx = data.examples || [];
+    if (rawEx.length) {
+      exEl.innerHTML = rawEx.map(ex => `
+        <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
+          <div style="font-size:.88rem;color:var(--text);font-style:italic">“${escHtml(ex.en)}”</div>
+          ${ex.zh ? `<div style="font-size:.85rem;color:var(--accent);margin-top:4px;font-weight:700">↳ ${escHtml(ex.zh)}</div>` : ''}
+        </div>
+      `).join('');
+      exSection.style.display = '';
+    } else {
+      exSection.style.display = 'none';
+    }
+  }
 
   // Definitions
+  let rawDefs = (data.definitions && data.definitions.length) ? data.definitions : [];
+  if (!rawDefs.length && primaryTr) {
+    const parts = primaryTr.split(';');
+    parts.forEach(part => {
+      const p = part.trim();
+      const match = p.match(/^(noun|verb|adjective|adverb|preposition|conjunction|n|v|adj|adv)\.\s*(.*)/i);
+      if (match) {
+        rawDefs.push({
+          pos: match[1].toLowerCase(),
+          defs: [{ def: `${data.word} (${match[1]})`, defZh: match[2], ex: '', exZh: '' }]
+        });
+      } else if (p) {
+        rawDefs.push({
+          pos: 'definition',
+          defs: [{ def: data.word, defZh: p, ex: '', exZh: '' }]
+        });
+      }
+    });
+  }
+
   const defs = document.getElementById('lr-definitions');
-  defs.innerHTML = (data.definitions||[]).map(pos=>{
-    const items = (pos.defs||[]).map((m,i)=>`
-      <div class="def-item" style="margin-bottom:14px">
-        <span class="def-num">${i+1}</span>
-        <div>
-          <div class="def-text"><strong style="color:var(--text);font-size:.95rem">${escHtml(m.def)}</strong></div>
-          ${m.defZh?`<div style="color:var(--muted);font-size:.85rem;margin-top:3px;line-height:1.4">${escHtml(m.defZh)}</div>`:''}
-          ${m.ex?`<div class="def-example" style="margin-top:6px;font-size:.82rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh?`<br><span style="color:var(--muted);font-size:.8rem">${escHtml(m.exZh)}</span>`:''}</div>`:''}
-        </div>
-      </div>`).join('');
-    return `<div class="pos-block" style="margin-bottom:18px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
-  }).join('');
+  if (defs) {
+    defs.innerHTML = rawDefs.map(pos=>{
+      const items = (pos.defs||[]).map((m,i)=>{
+        const zhDisplay = m.defZh || primaryTr;
+        return `
+        <div class="def-item" style="margin-bottom:12px">
+          <span class="def-num">${i+1}</span>
+          <div>
+            <div class="def-text"><strong style="color:var(--text);font-size:.92rem">${escHtml(m.def)}</strong></div>
+            ${zhDisplay ? `<div style="color:var(--accent);font-size:.92rem;font-weight:700;margin-top:3px;line-height:1.4">↳ ${escHtml(zhDisplay)}</div>` : ''}
+            ${m.ex ? `<div class="def-example" style="margin-top:4px;font-size:.8rem;color:var(--muted)">${escHtml(m.ex)}${m.exZh?`<br><span style="color:var(--text);font-size:.78rem">↳ ${escHtml(m.exZh)}</span>`:''}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="pos-block" style="margin-bottom:16px"><span class="pos-tag">${escHtml(pos.pos)}</span>${items}</div>`;
+    }).join('');
+  }
 
   // Forms
   const formsSection = document.getElementById('lr-forms-section');
   const formsEl = document.getElementById('lr-forms');
-  if (data.forms && data.forms.length) {
-    formsEl.innerHTML = data.forms
+  let rawForms = (data.forms && data.forms.length) ? data.forms : [];
+  if (!rawForms.length) {
+    const wb = data.word.toLowerCase();
+    rawForms.push({ label: 'plural', value: wb.endsWith('y') ? `${wb.slice(0, -1)}ies` : `${wb}s` });
+    rawForms.push({ label: 'past tense', value: wb.endsWith('e') ? `${wb}d` : `${wb}ed` });
+    rawForms.push({ label: 'present participle', value: wb.endsWith('e') ? `${wb.slice(0, -1)}ing` : `${wb}ing` });
+  }
+
+  if (formsSection && formsEl) {
+    formsEl.innerHTML = rawForms
       .map(
         (f) =>
           `<div class="form-chip" style="cursor:pointer" onclick="openWordModal('${escHtml(f.value.replace(/'/g, "\\'"))}')">${escHtml(f.label)}: <span style="color:var(--accent);font-weight:700">${escHtml(f.value)}</span></div>`,
       )
       .join('');
     formsSection.style.display = '';
-  } else {
-    formsSection.style.display = 'none';
   }
 
   // Synonyms
   const synSection = document.getElementById('lr-synonyms-section');
   const synEl = document.getElementById('lr-synonyms');
-  if (data.synonyms && data.synonyms.length) {
-    synEl.innerHTML = data.synonyms.map(s =>
+  const rawSyn = (data.synonyms && data.synonyms.length) ? data.synonyms : [];
+  if (synSection && synEl && rawSyn.length) {
+    synEl.innerHTML = rawSyn.map(s =>
       `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(s.replace(/'/g, "\\'"))}')">${escHtml(s)}</span>`
     ).join('');
     synSection.style.display = '';
-  } else {
+  } else if (synSection) {
     synSection.style.display = 'none';
   }
 
   // Antonyms
   const antSection = document.getElementById('lr-antonyms-section');
   const antEl = document.getElementById('lr-antonyms');
-  if (data.antonyms && data.antonyms.length) {
-    antEl.innerHTML = data.antonyms.map(a =>
+  const rawAnt = (data.antonyms && data.antonyms.length) ? data.antonyms : [];
+  if (antSection && antEl && rawAnt.length) {
+    antEl.innerHTML = rawAnt.map(a =>
       `<span style="padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;font-size:.78rem;color:var(--text);cursor:pointer" onclick="openWordModal('${escHtml(a.replace(/'/g, "\\'"))}')">${escHtml(a)}</span>`
     ).join('');
     antSection.style.display = '';
-  } else {
+  } else if (antSection) {
     antSection.style.display = 'none';
   }
 
