@@ -2267,6 +2267,22 @@ async function callDictAPI(word) {
     }
   }, 0);
 
+  if (rawExamples.length === 0) {
+    const cleanTr = zhWordTr ? zhWordTr.replace(/^(n|v|adj|adv)\.\s*/i, '').split(/[；;,]/)[0] : entry.word;
+    let genEn = `The concept of ${entry.word} is widely discussed in academic contexts.`;
+    let genZh = `關於 ${entry.word}（${cleanTr}）的概念在學術領域中被廣泛討論。`;
+
+    const firstPos = (definitions[0] && definitions[0].pos || '').toLowerCase();
+    if (firstPos.includes('verb')) {
+      genEn = `Researchers continue to ${entry.word} the results to gain deeper insights.`;
+      genZh = `研究人員持續對結果進行${cleanTr}，以獲得更深入的見解。`;
+    } else if (firstPos.includes('adjective')) {
+      genEn = `The findings revealed a ${entry.word} pattern throughout the study.`;
+      genZh = `研究結果在整個實驗中皆呈現出${cleanTr}的特徵。`;
+    }
+    rawExamples.push({ en: genEn, zh: genZh });
+  }
+
   return {
     word: entry.word,
     phonetic: phonetic,
@@ -2633,7 +2649,7 @@ async function runUpdate(){
     } catch(e){
       addUpdItem(w.word, w.translation, '✕ 查詢失敗'); fail++;
     }
-    if(i<targets.length-1) await new Promise(r=>setTimeout(r,600));
+    if(i<targets.length-1) await new Promise(r=>setTimeout(r,800));
   }
 
   saveWordsToActive();
