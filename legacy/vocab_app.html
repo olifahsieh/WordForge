@@ -615,23 +615,17 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 
 <!-- WORD LIST -->
 <div class="section" id="sec-list">
-  <div class="upload-panel" style="margin-bottom:14px">
-    <h3>📚 雅思3000核心字庫</h3>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">3632個核心字彙，依22個主題分類</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="ieltsChapterSelect" onchange="loadIELTSChapter(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
-        <option value="">— 選擇章節 —</option>
+      <select id="ieltsChapterSelect" onchange="loadIELTSChapter(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+        <option value="">📚 雅思3000核心字庫（請選擇章節）</option>
       </select>
-      <button onclick="loadIELTSChapter(document.getElementById('ieltsChapterSelect').value)" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:8px 14px;border:1px solid var(--accent);border-radius:2px;background:transparent;color:var(--accent);cursor:pointer;letter-spacing:.5px;text-transform:uppercase;transition:all .15s" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">載入</button>
     </div>
-  </div>
-  <div class="upload-panel" style="margin-bottom:20px">
-    <h3>🗂 我的單字集</h3>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-      <select id="myDatasetSelect" onchange="loadDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:8px 12px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
-        <option value="">— 無自訂單字集 —</option>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="myDatasetSelect" onchange="loadDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+        <option value="">🗂 我的單字集（無自訂字庫）</option>
       </select>
-      <button id="myDatasetDelBtn" onclick="deleteDataset(document.getElementById('myDatasetSelect').value)" title="刪除選中字庫" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:8px 12px;border:1px solid var(--danger);border-radius:2px;background:transparent;color:var(--danger);cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--danger)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">🗑 刪除</button>
+      <button id="myDatasetDelBtn" onclick="deleteDataset(document.getElementById('myDatasetSelect').value)" title="刪除選中字庫" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:7px 12px;border:1px solid var(--danger);border-radius:2px;background:transparent;color:var(--danger);cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--danger)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">🗑 刪除</button>
     </div>
   </div>
   <div class="list-controls">
@@ -2156,7 +2150,7 @@ function renderDatasetsList(){
   });
 
   if(userCustomDatasets.length === 0){
-    sel.innerHTML = '<option value="">— 無自訂單字集 —</option>';
+    sel.innerHTML = '<option value="">🗂 我的單字集（無自訂字庫）</option>';
     if(delBtn) delBtn.style.display = 'none';
     return;
   }
@@ -2166,18 +2160,19 @@ function renderDatasetsList(){
   userCustomDatasets.forEach(ds => {
     const opt = document.createElement('option');
     opt.value = ds.id;
-    opt.textContent = `${ds.name}（${ds.count||0}字）`;
+    opt.textContent = `🗂 ${ds.name}（${ds.count||0}字）`;
     if(ds.id === activeDatasetId) opt.selected = true;
     sel.appendChild(opt);
   });
 
-  // If active dataset is one of mine, sync select
+  // If active dataset is not one of mine, add placeholder at start
   const activeIsCustom = userCustomDatasets.some(d => d.id === activeDatasetId);
   if(!activeIsCustom) {
     const firstOpt = document.createElement('option');
     firstOpt.value = '';
     firstOpt.disabled = true;
-    firstOpt.textContent = '— 選擇自訂字庫 —';
+    firstOpt.selected = true;
+    firstOpt.textContent = '🗂 我的單字集（請選擇自訂字庫）';
     sel.insertBefore(firstOpt, sel.firstChild);
   }
 }
@@ -2915,11 +2910,11 @@ function addUpdItem(word, tr, status, changed=false){
 function populateIELTSSelect() {
   const sel = document.getElementById('ieltsChapterSelect');
   if (!sel || !window.IELTS_DATASETS) return;
-  sel.innerHTML = '<option value="">— 選擇章節 —</option>';
+  sel.innerHTML = '<option value="" disabled>📚 雅思3000核心字庫（請選擇章節）</option>';
   window.IELTS_DATASETS.forEach(ds => {
     const opt = document.createElement('option');
     opt.value = ds.id;
-    opt.textContent = `${ds.name} (${ds.count}字)`;
+    opt.textContent = `📚 ${ds.name}（${ds.count}字）`;
     if (ds.id === activeDatasetId) opt.selected = true;
     sel.appendChild(opt);
   });
