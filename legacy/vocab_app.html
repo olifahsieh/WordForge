@@ -2146,7 +2146,16 @@ function renderDatasetsList(){
   const delBtn = document.getElementById('myDatasetDelBtn');
   if(!sel) return;
 
-  if(!datasets || datasets.length === 0){
+  // Filter custom datasets: exclude built-in datasets that haven't been edited/used (i.e. whose ID matches built-in and words match)
+  const userCustomDatasets = (datasets || []).filter(ds => {
+    const isBuiltinId = (window.IELTS_DATASETS || []).some(bDs => bDs.id === ds.id);
+    if (!isBuiltinId) return true; // User created dataset
+    // Check if edited/used: if mastery/srs exists for any word or if modified
+    const hasMastery = ds.words && ds.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
+    return hasMastery;
+  });
+
+  if(userCustomDatasets.length === 0){
     sel.innerHTML = '<option value="">— 無自訂單字集 —</option>';
     if(delBtn) delBtn.style.display = 'none';
     return;
@@ -2154,7 +2163,7 @@ function renderDatasetsList(){
 
   if(delBtn) delBtn.style.display = '';
   sel.innerHTML = '';
-  datasets.forEach(ds => {
+  userCustomDatasets.forEach(ds => {
     const opt = document.createElement('option');
     opt.value = ds.id;
     opt.textContent = `${ds.name}（${ds.count||0}字）`;
@@ -2163,7 +2172,7 @@ function renderDatasetsList(){
   });
 
   // If active dataset is one of mine, sync select
-  const activeIsCustom = datasets.some(d => d.id === activeDatasetId);
+  const activeIsCustom = userCustomDatasets.some(d => d.id === activeDatasetId);
   if(!activeIsCustom) {
     const firstOpt = document.createElement('option');
     firstOpt.value = '';
