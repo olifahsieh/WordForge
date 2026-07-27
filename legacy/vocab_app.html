@@ -1064,28 +1064,31 @@ function switchMode(m,btn){
 }
 
 // ═══════════════════════════════════════
-//  SPEECH (Optimized for Natural High-Quality Human Voices)
+//  SPEECH (Ultra-Natural Human Voice with Real HD Audio Fallback)
 // ═══════════════════════════════════════
 let preferredVoice = null;
+
 function getNaturalVoice() {
   if (!window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
 
-  // Preferred high-quality natural voice keywords
-  const preferredNames = [
-    'Samantha', 'Alex', 'Victoria', 'Karen', 'Daniel', 
+  // Premium Neural / Natural Voice Ranking (Mac, iOS, Chrome, Edge, Windows)
+  const premiumKeywords = [
+    'Evan (Enhanced)', 'Ava (Premium)', 'Zoe (Premium)', 'Serena (Premium)', 'Oliver (Enhanced)',
+    'Samantha (Enhanced)', 'Karen (Enhanced)', 'Daniel (Enhanced)',
+    'Natural', 'Neural', 'Online (Natural)',
     'Google US English', 'Google UK English Female', 'Google UK English Male',
-    'Fiona', 'Moira', 'Ava', 'Allison'
+    'Samantha', 'Ava', 'Zoe', 'Alex', 'Victoria', 'Daniel', 'Karen'
   ];
 
-  for (const name of preferredNames) {
-    const found = voices.find((v) => v.name.includes(name) && v.lang.startsWith('en'));
+  for (const keyword of premiumKeywords) {
+    const found = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes(keyword.toLowerCase()));
     if (found) return found;
   }
 
-  // Fallback to any en-US or en-GB voice
-  return voices.find((v) => v.lang === 'en-US') || voices.find((v) => v.lang.startsWith('en')) || voices[0];
+  // Fallback to any English voice
+  return voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en')) || null;
 }
 
 if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -1094,15 +1097,75 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
   };
 }
 
-function speak(word, rate = 0.88) {
-  if (!window.speechSynthesis) {
-    showToast('⚠ 此瀏覽器不支援語音');
-    return;
+let currentAudio = null;
+
+function speak(word, rate = 0.9) {
+  if (!word || !word.trim()) return;
+  const cleanWord = word.trim();
+
+  // If previous audio playing, stop it
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
   }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
+  // 1. Try Playing Real Human Native Speaker MP3 Audio first (Google / FreeDict HD Pronunciation)
+  const encoded = encodeURIComponent(cleanWord.toLowerCase());
+  const audioUrls = [
+    `https://dict.youdao.com/dictvoice?audio=${encoded}&type=2`, // Native American English Audio
+    `https://api.dictionaryapi.dev/media/pronunciations/en/${encoded}-us.mp3`,
+    `https://ssl.gstatic.com/dictionary/static/sounds/20200429/${encoded}--_us_1.mp3`
+  ];
+
+  let playedAudio = false;
+  const audio = new Audio();
+  currentAudio = audio;
+
+  const tryNextUrl = (index) => {
+    if (index >= audioUrls.length) {
+      // 2. Fallback to Web Speech API with Premium Voice
+      speakWithTTS(cleanWord, rate);
+      return;
+    }
+    audio.src = audioUrls[index];
+    audio.play().then(() => {
+      playedAudio = true;
+    }).catch(() => {
+      tryNextUrl(index + 1);
+    });
+  };
+
+  // Quick fallback timeout if MP3 fails to load in 600ms
+  const fallbackTimer = setTimeout(() => {
+    if (!playedAudio && currentAudio === audio) {
+      audio.pause();
+      currentAudio = null;
+      speakWithTTS(cleanWord, rate);
+    }
+  }, 650);
+
+  audio.onended = () => {
+    clearTimeout(fallbackTimer);
+    currentAudio = null;
+  };
+  audio.onerror = () => {
+    clearTimeout(fallbackTimer);
+    const currIndex = audioUrls.indexOf(audio.src);
+    tryNextUrl(currIndex >= 0 ? currIndex + 1 : 0);
+  };
+
+  tryNextUrl(0);
+}
+
+function speakWithTTS(word, rate = 0.9) {
+  if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(word);
   u.lang = 'en-US';
-  u.rate = rate; // Adjusted to natural comfortable speaking pace (0.88)
+  u.rate = rate;
   u.pitch = 1.0;
 
   if (!preferredVoice) preferredVoice = getNaturalVoice();
@@ -1110,7 +1173,8 @@ function speak(word, rate = 0.88) {
 
   window.speechSynthesis.speak(u);
 }
-function speakCurrent(rate = 0.88) {
+
+function speakCurrent(rate = 0.9) {
   if (_currentWord) speak(_currentWord, rate);
 }
 
