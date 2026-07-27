@@ -2140,27 +2140,26 @@ function renderDatasetsList(){
   const delBtn = document.getElementById('myDatasetDelBtn');
   if(!sel) return;
 
-  // Filter custom datasets:
-  // 1. Completely custom user datasets (ID not in IELTS_DATASETS)
-  // 2. Built-in datasets that have been edited/used (ID in IELTS_DATASETS, but words edited OR has mastery/srs entries)
-  const userCustomDatasets = (datasets || []).filter(ds => {
-    const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === ds.id);
-    if (!builtinMatch) return true; // User-created dataset (e.g. CSV import, ds_12345, custom_ielts_3000)
+  // Clean datasets array in localStorage if it contains old unedited built-in forks
+  if (Array.isArray(datasets)) {
+    const originalLen = datasets.length;
+    // Filter out any built-in datasets that are identical to IELTS_DATASETS
+    datasets = datasets.filter(ds => {
+      const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === ds.id);
+      if (!builtinMatch) return true; // Truly custom dataset
+      // Keep only if user has active mastery/srs entries
+      return ds.words && ds.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
+    });
+    // Strict limit: Keep at most the first 3 custom datasets as requested
+    if (datasets.length > 3) {
+      datasets = datasets.slice(0, 3);
+    }
+    if (datasets.length !== originalLen) {
+      saveAll();
+    }
+  }
 
-    // Built-in dataset fork: check if user actually used/edited it
-    const hasMastery = ds.words && ds.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
-    if (hasMastery) return true;
-
-    // Check if content was edited (e.g. word details updated by AI)
-    const isContentModified = ds.words && builtinMatch.words && (
-      ds.words.length !== builtinMatch.words.length ||
-      ds.words.some((w, idx) => {
-        const bw = builtinMatch.words[idx];
-        return !bw || w.phonetic !== bw.phonetic || w.translation !== bw.translation || (w.examples && w.examples.length > 0);
-      })
-    );
-    return isContentModified;
-  });
+  const userCustomDatasets = datasets || [];
 
   if(userCustomDatasets.length === 0){
     sel.innerHTML = '<option value="">🗂 我的單字集（無自訂字庫）</option>';
