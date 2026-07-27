@@ -2293,8 +2293,12 @@ async function callDictAPI(word) {
   const rawExamples = [];
   definitions.forEach((d) => {
     d.defs.forEach((item) => {
-      if (item.ex && item.ex.trim().split(/\s+/).length >= 3) {
-        rawExamples.push({ en: item.ex.trim(), zh: '' });
+      if (item.ex && item.ex.trim()) {
+        const wordsCount = item.ex.trim().split(/\s+/).length;
+        const charLen = item.ex.trim().length;
+        if (wordsCount >= 4 && wordsCount <= 25 && charLen <= 150) {
+          rawExamples.push({ en: item.ex.trim(), zh: '' });
+        }
       }
     });
   });
@@ -2305,7 +2309,9 @@ async function callDictAPI(word) {
         for (const item of group) {
           if (item && Array.isArray(item) && item[0]) {
             const cleanEn = item[0].replace(/<[^>]+>/g, '').trim();
-            if (cleanEn && cleanEn.split(/\s+/).length >= 3 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
+            const wordsCount = cleanEn.split(/\s+/).length;
+            const charLen = cleanEn.length;
+            if (wordsCount >= 4 && wordsCount <= 25 && charLen <= 150 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
               const formattedEn = cleanEn.charAt(0).toUpperCase() + cleanEn.slice(1);
               rawExamples.push({ en: formattedEn, zh: '' });
               if (rawExamples.length >= 2) break;
