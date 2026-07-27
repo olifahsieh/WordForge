@@ -833,7 +833,7 @@ function saveAll(){
 }
 
 function isBuiltin(id) {
-  return id === 'builtin' || String(id).startsWith('ielts_');
+  return id === 'builtin' || String(id).startsWith('ielts_') || String(id).startsWith('ielts3k_');
 }
 
 function ensureEditableDataset(actionName = '編輯') {
@@ -879,19 +879,16 @@ window.loadFromCloud = async function() {
       
       // Merge remote datasets with local datasets so custom datasets are never lost
       if (Array.isArray(data.datasets) && data.datasets.length > 0) {
-        const localDsMap = new Map(datasets.map(d => [d.id, d]));
+        const localDsMap = new Map((datasets || []).map(d => [d.id, d]));
         data.datasets.forEach(rd => {
           if (rd && rd.id && Array.isArray(rd.words) && rd.words.length > 0) {
-            // Check if remote dataset is an unedited built-in fork
-            const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === rd.id);
-            if (builtinMatch) {
-              const hasMastery = rd.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
-              if (!hasMastery) return; // Skip unedited built-in fork
+            if (isBuiltin(rd.id) || (window.IELTS_DATASETS || []).some(bDs => bDs.id === rd.id)) {
+              return; // Strictly exclude built-in datasets from custom datasets
             }
             localDsMap.set(rd.id, rd);
           }
         });
-        datasets = Array.from(localDsMap.values());
+        datasets = Array.from(localDsMap.values()).filter(d => !isBuiltin(d.id));
       }
       
       if (data.activeDatasetId) activeDatasetId = data.activeDatasetId;
@@ -2146,15 +2143,13 @@ function renderDatasetsList(){
   const delBtn = document.getElementById('myDatasetDelBtn');
   if(!sel) return;
 
-  // Clean datasets array in localStorage if it contains old unedited built-in forks
+  // Purge/clean datasets array: strictly remove any dataset entry that is a built-in dataset
   if (Array.isArray(datasets)) {
     const originalLen = datasets.length;
-    // Filter out built-in datasets that have no user edits or study history
     datasets = datasets.filter(ds => {
-      const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === ds.id);
-      if (!builtinMatch) return true; // User created dataset
-      // Keep if user has active mastery/srs entries
-      return ds.words && ds.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
+      if (!ds || !ds.id) return false;
+      const bFlag = isBuiltin(ds.id) || (window.IELTS_DATASETS || []).some(bDs => bDs.id === ds.id);
+      return !bFlag; // Strictly keep only true user-created/imported datasets
     });
     if (datasets.length !== originalLen) {
       saveAll();
@@ -2819,7 +2814,7 @@ function updateWordGlobally(wordStr, data) {
     });
   }
 
-  // 3. Update in built-in IELTS datasets and convert/fork that chapter into custom datasets for Cloud Firestore persistence!
+  // 3. Update in built-in IELTS datasets memory directly
   if (window.IELTS_DATASETS && Array.isArray(window.IELTS_DATASETS)) {
     window.IELTS_DATASETS.forEach(bDs => {
       if (bDs.words && Array.isArray(bDs.words)) {
@@ -2831,27 +2826,6 @@ function updateWordGlobally(wordStr, data) {
             bDs.words[bIdx].examples = data.examples;
           }
           updatedAny = true;
-
-          let customDs = datasets.find(d => d.id === bDs.id);
-          if (!customDs) {
-            customDs = {
-              id: bDs.id,
-              name: bDs.name,
-              date: getTodayDate(),
-              count: bDs.words.length,
-              words: [...bDs.words]
-            };
-            datasets.push(customDs);
-          } else {
-            const cIdx = customDs.words.findIndex(x => x.word.toLowerCase() === targetLower);
-            if (cIdx >= 0) {
-              customDs.words[cIdx].phonetic = data.phonetic || customDs.words[cIdx].phonetic;
-              customDs.words[cIdx].translation = data.translation_compact || customDs.words[cIdx].translation;
-              if (data.examples && data.examples.length) {
-                customDs.words[cIdx].examples = data.examples;
-              }
-            }
-          }
         }
       }
     });
