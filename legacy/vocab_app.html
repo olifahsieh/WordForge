@@ -2143,17 +2143,13 @@ function renderDatasetsList(){
   // Clean datasets array in localStorage if it contains old unedited built-in forks
   if (Array.isArray(datasets)) {
     const originalLen = datasets.length;
-    // Filter out any built-in datasets that are identical to IELTS_DATASETS
+    // Filter out built-in datasets that have no user edits or study history
     datasets = datasets.filter(ds => {
       const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === ds.id);
-      if (!builtinMatch) return true; // Truly custom dataset
-      // Keep only if user has active mastery/srs entries
+      if (!builtinMatch) return true; // User created dataset
+      // Keep if user has active mastery/srs entries
       return ds.words && ds.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
     });
-    // Strict limit: Keep at most the first 3 custom datasets as requested
-    if (datasets.length > 3) {
-      datasets = datasets.slice(0, 3);
-    }
     if (datasets.length !== originalLen) {
       saveAll();
     }
