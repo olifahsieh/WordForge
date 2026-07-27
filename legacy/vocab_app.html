@@ -615,17 +615,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 
 <!-- WORD LIST -->
 <div class="section" id="sec-list">
-  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="ieltsChapterSelect" onchange="loadIELTSChapter(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+      <select id="ieltsChapterSelect" onchange="previewDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
         <option value="">📚 雅思3000核心字庫（請選擇章節）</option>
       </select>
+      <button onclick="loadDataset(document.getElementById('ieltsChapterSelect').value)" style="font-family:'Space Mono',monospace;font-size:.68rem;padding:7px 14px;border:1px solid var(--accent);border-radius:2px;background:transparent;color:var(--accent);cursor:pointer;letter-spacing:.5px;font-weight:700;transition:all .15s" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">📥 載入</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="myDatasetSelect" onchange="loadDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
+      <select id="myDatasetSelect" onchange="previewDataset(this.value)" style="flex:1;min-width:180px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:.82rem;cursor:pointer;outline:none">
         <option value="">🗂 我的單字集（無自訂字庫）</option>
       </select>
-      <button id="myDatasetDelBtn" onclick="deleteDataset(document.getElementById('myDatasetSelect').value)" title="刪除選中字庫" style="font-family:'Space Mono',monospace;font-size:.63rem;padding:7px 12px;border:1px solid var(--danger);border-radius:2px;background:transparent;color:var(--danger);cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--danger)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">🗑 刪除</button>
+      <button id="myDatasetLoadBtn" onclick="loadDataset(document.getElementById('myDatasetSelect').value)" style="font-family:'Space Mono',monospace;font-size:.68rem;padding:7px 14px;border:1px solid var(--accent);border-radius:2px;background:transparent;color:var(--accent);cursor:pointer;letter-spacing:.5px;font-weight:700;transition:all .15s" onmouseover="this.style.background='var(--accent)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">📥 載入</button>
+      <button id="myDatasetDelBtn" onclick="deleteDataset(document.getElementById('myDatasetSelect').value)" title="刪除選中字庫" style="font-family:'Space Mono',monospace;font-size:.68rem;padding:7px 12px;border:1px solid var(--danger);border-radius:2px;background:transparent;color:var(--danger);cursor:pointer;letter-spacing:.5px;transition:all .15s" onmouseover="this.style.background='var(--danger)';this.style.color='var(--bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)'">🗑 刪除</button>
     </div>
   </div>
   <div class="list-controls">
@@ -2091,7 +2093,18 @@ function confirmImport(){
   pendingWords=[]; pendingFileName='';
   renderDatasetsList(); showToast(`🎉 已匯入 ${ds.count} 個單字！`); initFlashcard();
 }
-function cancelImport(){ pendingWords=[]; pendingFileName=''; document.getElementById('previewPanel').classList.remove('show'); }
+function previewDataset(id){
+  if(!id) return;
+  let ds = datasets.find(d => d.id === id); 
+  if (!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d => d.id === id);
+  if (!ds) return;
+
+  // Temporarily update WORDS for preview in word table list without setting activeDatasetId or switching modes
+  WORDS.length = 0;
+  (ds.words || []).forEach(w => WORDS.push(w));
+  filterList();
+  showToast(`👀 預覽中：「${ds.name}」（點擊「載入」確定切換）`);
+}
 function loadDataset(id){
   let ds = datasets.find(d => d.id === id); 
   if (!ds && window.IELTS_DATASETS) ds = window.IELTS_DATASETS.find(d => d.id === id);
