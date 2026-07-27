@@ -882,6 +882,12 @@ window.loadFromCloud = async function() {
         const localDsMap = new Map(datasets.map(d => [d.id, d]));
         data.datasets.forEach(rd => {
           if (rd && rd.id && Array.isArray(rd.words) && rd.words.length > 0) {
+            // Check if remote dataset is an unedited built-in fork
+            const builtinMatch = (window.IELTS_DATASETS || []).find(bDs => bDs.id === rd.id);
+            if (builtinMatch) {
+              const hasMastery = rd.words.some(w => masteryMap[w.word] !== undefined || srsMap[w.word] !== undefined);
+              if (!hasMastery) return; // Skip unedited built-in fork
+            }
             localDsMap.set(rd.id, rd);
           }
         });
