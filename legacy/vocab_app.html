@@ -1562,20 +1562,27 @@ function renderTyping(){
   document.getElementById('tyShowBtn').disabled=false;
 
   const grp = getActiveGroup();
-  // Check if all words in current group have at least 2 correct hits
+  
+  // Skip words in queue that already reached 2 correct hits
+  while (tyIdx < tyQueue.length && (tyCorrectCountMap[tyQueue[tyIdx].word] || 0) >= 2) {
+    tyIdx++;
+  }
+
   const uncompleted = grp.filter(w => (tyCorrectCountMap[w.word] || 0) < 2);
 
   if(tyIdx >= tyQueue.length && uncompleted.length > 0) {
-    // Re-queue remaining uncompleted words
+    // Re-queue remaining uncompleted words only
+    let refreshPool = [];
     uncompleted.forEach(w => {
-      tyQueue.push(w);
-      tyQueue.push(w);
+      refreshPool.push(w);
+      refreshPool.push(w);
     });
-    tyQueue = shuffle(tyQueue);
-    showToast(`🔁 第三輪拼字：補充 ${uncompleted.length} 個尚未答對 2 次的單字`);
+    tyQueue = shuffle(refreshPool);
+    tyIdx = 0;
+    showToast(`🔁 第三輪拼字：持續篩選剩餘 ${uncompleted.length} 個尚未達標單字`);
   }
 
-  if(tyIdx>=tyQueue.length && uncompleted.length === 0){ showTypingResult(); return; }
+  if(uncompleted.length === 0){ showTypingResult(); return; }
 
   const w=tyQueue[tyIdx]; _currentWord=w.word;
   const currentHits = tyCorrectCountMap[w.word] || 0;
@@ -1741,18 +1748,26 @@ function renderSentence(){
   document.getElementById('stShowBtn').disabled=false;
 
   const grp = getActiveGroup();
+  
+  // Skip words in queue that already reached 2 correct hits
+  while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= 2) {
+    stIdx++;
+  }
+
   const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 2);
 
   if(stIdx >= stQueue.length && uncompleted.length > 0) {
+    let refreshPool = [];
     uncompleted.forEach(w => {
-      stQueue.push(w);
-      stQueue.push(w);
+      refreshPool.push(w);
+      refreshPool.push(w);
     });
-    stQueue = shuffle(stQueue);
-    showToast(`🔁 第四輪造句：補充 ${uncompleted.length} 個尚未答對 2 次的單字`);
+    stQueue = shuffle(refreshPool);
+    stIdx = 0;
+    showToast(`🔁 第四輪造句：持續篩選剩餘 ${uncompleted.length} 個尚未達標單字`);
   }
 
-  if(stIdx>=stQueue.length && uncompleted.length === 0){ showSentenceResult(); return; }
+  if(uncompleted.length === 0){ showSentenceResult(); return; }
 
   const w=stQueue[stIdx]; _currentWord=w.word;
   const currentHits = stCorrectCountMap[w.word] || 0;
