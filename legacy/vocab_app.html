@@ -2679,7 +2679,7 @@ async function callDictAPI(word) {
     }
   });
 
-  // Build compact translation string prioritizing example-aligned terms and providing at least 4 Chinese terms
+  // Build compact translation string prioritizing example-aligned terms and keeping 2~4 common meanings
   const posZhToEn = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adjective', '副詞': 'adverb', '介詞': 'preposition', '連詞': 'conjunction', '感嘆詞': 'interjection', '代詞': 'pronoun' };
   const posEnToZh = Object.fromEntries(Object.entries(posZhToEn).map(([k, v]) => [v, k]));
   const posCompactParts = [];
@@ -2691,7 +2691,7 @@ async function callDictAPI(word) {
     const zhKey = posEnToZh[posKey] || posKey;
     const rawTerms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter(t => t.length <= 6);
     
-    // Sort terms: example-aligned terms first
+    // Sort terms: example-aligned terms first, followed by common high-frequency meanings
     const sortedTerms = [...rawTerms].sort((a, b) => {
       const aInEx = exampleZhTerms.some(e => e.includes(a) || a.includes(e));
       const bInEx = exampleZhTerms.some(e => e.includes(b) || b.includes(e));
@@ -2702,17 +2702,17 @@ async function callDictAPI(word) {
       if (!globalCollectedTerms.includes(t)) globalCollectedTerms.push(t);
     });
 
-    let posZh = sortedTerms.slice(0, 4).join('、');
+    // Keep 2 to 3 most common & aligned terms per POS
+    let posZh = sortedTerms.slice(0, 3).join('、');
     if (!posZh) posZh = zhWordTr;
     if (posZh) posCompactParts.push(`${posKey}. ${posZh}`);
   });
 
-  // Ensure at least 4 Chinese terms overall if available
-  if (globalCollectedTerms.length < 4 && zhWordTr && !globalCollectedTerms.includes(zhWordTr)) {
+  if (globalCollectedTerms.length < 2 && zhWordTr && !globalCollectedTerms.includes(zhWordTr)) {
     globalCollectedTerms.unshift(zhWordTr);
   }
 
-  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${globalCollectedTerms.slice(0, 4).join('、') || zhWordTr}`;
+  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${globalCollectedTerms.slice(0, 3).join('、') || zhWordTr}`;
 
   // Synonyms & Antonyms from Datamuse
   const synonyms = [];
