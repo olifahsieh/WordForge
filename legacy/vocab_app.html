@@ -1890,38 +1890,6 @@ function showSentenceResult(){
   }
 }
 
-
-function liveCheckSentence(){
-  if(!stQueue[stIdx]) return;
-  const w=stQueue[stIdx];
-  const inp=document.getElementById('sentenceInput');
-  if(inp.value.trim().toLowerCase()===w.word.toLowerCase()){
-    inp.className='typing-input correct-input'; inp.disabled=true;
-    stCorrect++; streak++;
-    const errN=stErrMap[w.word]||0;
-    setMastery(w.word, errN===0?2:1);
-    delete stErrMap[w.word];
-    showToast(errN===0?'✓ 正確！':'△ 稍懂 — 繼續練習！');
-    setTimeout(()=>{ stIdx++; renderSentence(); },600);
-  }
-}
-
-function handleSentenceKey(e){
-  if(e.key!=='Enter') return;
-  e.preventDefault();
-  if(stAnswerShowing){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); return; }
-  if(!stQueue[stIdx]) return;
-  const w=stQueue[stIdx];
-  const inp=document.getElementById('sentenceInput');
-  const val=inp.value.trim().toLowerCase(); if(!val) return;
-  if(val!==w.word.toLowerCase()){
-    inp.className='typing-input wrong-input';
-    stErrMap[w.word]=(stErrMap[w.word]||0)+1;
-    setMastery(w.word,0);
-    document.getElementById('stWrongMsg').textContent=`✕ 錯誤 (${stErrMap[w.word]}次) — 稍後再出現`;
-    setTimeout(()=>{ inp.className='typing-input'; inp.value=''; inp.focus();
-      document.getElementById('stWrongMsg').textContent=''; },500);
-  }
 }
 
 function stShowAnswer(){
