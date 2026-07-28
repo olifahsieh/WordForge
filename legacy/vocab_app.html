@@ -2702,8 +2702,9 @@ async function callDictAPI(word) {
       if (!globalCollectedTerms.includes(t)) globalCollectedTerms.push(t);
     });
 
-    // Keep 2 to 3 most common & aligned terms per POS
-    let posZh = sortedTerms.slice(0, 3).join('、');
+    // Dynamically keep 2 to 4 most common & aligned terms per POS
+    const targetN = sortedTerms.length >= 4 ? 4 : Math.max(2, sortedTerms.length);
+    let posZh = sortedTerms.slice(0, targetN).join('、');
     if (!posZh) posZh = zhWordTr;
     if (posZh) posCompactParts.push(`${posKey}. ${posZh}`);
   });
@@ -2712,7 +2713,8 @@ async function callDictAPI(word) {
     globalCollectedTerms.unshift(zhWordTr);
   }
 
-  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${globalCollectedTerms.slice(0, 3).join('、') || zhWordTr}`;
+  const fallbackN = globalCollectedTerms.length >= 4 ? 4 : Math.max(2, globalCollectedTerms.length);
+  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${globalCollectedTerms.slice(0, fallbackN).join('、') || zhWordTr}`;
 
   // Synonyms & Antonyms from Datamuse
   const synonyms = [];
