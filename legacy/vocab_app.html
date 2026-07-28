@@ -2665,21 +2665,54 @@ async function callDictAPI(word) {
     rawExamples.push({ en: genEn, zh: genZh });
   }
 
-  // Build compact translation string
+  // Collect words / terms from example translations to prioritize context-aligned meanings
+  const exampleZhTerms = [];
+  rawExamples.forEach(ex => {
+    if (ex.zh) {
+      // Find words in parentheses or key nouns/verbs
+      const matches = ex.zh.match(/[\u4e00-\u9fa5]{2,6}/g) || [];
+      matches.forEach(m => {
+        if (!['我們', '表示', '研究', '結果', '可以', '需要', '進行', '對於'].includes(m) && !exampleZhTerms.includes(m)) {
+          exampleZhTerms.push(m);
+        }
+      });
+    }
+  });
+
+  // Build compact translation string prioritizing example-aligned terms and providing at least 4 Chinese terms
   const posZhToEn = { '名詞': 'noun', '動詞': 'verb', '形容詞': 'adjective', '副詞': 'adverb', '介詞': 'preposition', '連詞': 'conjunction', '感嘆詞': 'interjection', '代詞': 'pronoun' };
   const posEnToZh = Object.fromEntries(Object.entries(posZhToEn).map(([k, v]) => [v, k]));
   const posCompactParts = [];
   const keys = Object.keys(gtDictMap).length ? Object.keys(gtDictMap) : definitions.map(d=>d.pos);
 
+  const globalCollectedTerms = [];
+
   keys.forEach(posKey => {
     const zhKey = posEnToZh[posKey] || posKey;
-    const terms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter(t => t.length <= 6);
-    let posZh = terms.slice(0, 3).join('、');
+    const rawTerms = (gtDictMap[zhKey] || gtDictMap[posKey] || []).filter(t => t.length <= 6);
+    
+    // Sort terms: example-aligned terms first
+    const sortedTerms = [...rawTerms].sort((a, b) => {
+      const aInEx = exampleZhTerms.some(e => e.includes(a) || a.includes(e));
+      const bInEx = exampleZhTerms.some(e => e.includes(b) || b.includes(e));
+      return (bInEx ? 1 : 0) - (aInEx ? 1 : 0);
+    });
+
+    sortedTerms.forEach(t => {
+      if (!globalCollectedTerms.includes(t)) globalCollectedTerms.push(t);
+    });
+
+    let posZh = sortedTerms.slice(0, 4).join('、');
     if (!posZh) posZh = zhWordTr;
     if (posZh) posCompactParts.push(`${posKey}. ${posZh}`);
   });
 
-  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${zhWordTr}`;
+  // Ensure at least 4 Chinese terms overall if available
+  if (globalCollectedTerms.length < 4 && zhWordTr && !globalCollectedTerms.includes(zhWordTr)) {
+    globalCollectedTerms.unshift(zhWordTr);
+  }
+
+  let compactList = posCompactParts.length ? posCompactParts.join('; ') : `noun. ${globalCollectedTerms.slice(0, 4).join('、') || zhWordTr}`;
 
   // Synonyms & Antonyms from Datamuse
   const synonyms = [];
