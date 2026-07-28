@@ -1614,7 +1614,7 @@ function liveCheck(){
     tyCorrectCountMap[w.word] = (tyCorrectCountMap[w.word] || 0) + 1;
     const hits = tyCorrectCountMap[w.word];
     
-    showToast(hits >= 4 ? `✓ 正確！(${w.word} 已完成4次答對)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
+    showToast(hits >= 4 ? `✓ 正確！(${w.word} 已完成4次答對)` : `✓ 正確！(${w.word} 還需答對 ${4 - hits} 次)`);
     setTimeout(()=>{ tyIdx++; renderTyping(); },600);
   }
 }
@@ -1828,7 +1828,7 @@ function liveCheckSentence(){
     stCorrectCountMap[w.word] = (stCorrectCountMap[w.word] || 0) + 1;
     const hits = stCorrectCountMap[w.word];
     
-    showToast(hits >= 4 ? `✓ 造句填空正確！(${w.word} 已滿 3 次)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
+    showToast(hits >= 3 ? `✓ 造句填空正確！(${w.word} 已完成3次答對)` : `✓ 正確！(${w.word} 還需答對 ${3 - hits} 次)`);
     setTimeout(()=>{ stIdx++; renderSentence(); },600);
   }
 }
