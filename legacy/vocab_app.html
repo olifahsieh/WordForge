@@ -1543,7 +1543,7 @@ function startTyping(){
   tyQueue = shuffle(initialPool);
   // Ensure every word is queued at least twice for the 2-hit rule
   grp.forEach(w => {
-    if (tyQueue.filter(x => x.word === w.word).length < 2) {
+    if (tyQueue.filter(x => x.word === w.word).length < 4) {
       tyQueue.push(w);
       tyQueue.push(w);
     }
@@ -1564,11 +1564,11 @@ function renderTyping(){
   const grp = getActiveGroup();
   
   // Skip words in queue that already reached 2 correct hits
-  while (tyIdx < tyQueue.length && (tyCorrectCountMap[tyQueue[tyIdx].word] || 0) >= 2) {
+  while (tyIdx < tyQueue.length && (tyCorrectCountMap[tyQueue[tyIdx].word] || 0) >= 4) {
     tyIdx++;
   }
 
-  const uncompleted = grp.filter(w => (tyCorrectCountMap[w.word] || 0) < 2);
+  const uncompleted = grp.filter(w => (tyCorrectCountMap[w.word] || 0) < 4);
 
   if(tyIdx >= tyQueue.length && uncompleted.length > 0) {
     // Re-queue remaining uncompleted words only
@@ -1592,9 +1592,9 @@ function renderTyping(){
   document.getElementById('ty-phonetic').textContent=w.phonetic;
   document.getElementById('typingHint').textContent=buildPartialHint(w.word);
   
-  const completedWordsCount = grp.filter(g => (tyCorrectCountMap[g.word] || 0) >= 2).length;
+  const completedWordsCount = grp.filter(g => (tyCorrectCountMap[g.word] || 0) >= 4).length;
   document.getElementById('ty-counter').textContent=
-    `第三輪拼字 (需各答對2次) ·  已達成 ${completedWordsCount}/${grp.length} 字  (本字已對 ${currentHits}/2 次)`;
+    `第三輪拼字 (需各答對4次) ·  已達成 ${completedWordsCount}/${grp.length} 字  (本字已對 ${currentHits}/3 次)`;
   document.getElementById('ty-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
   document.getElementById('ty-retry-badge').style.display=errN>0?'':'none';
 
@@ -1614,7 +1614,7 @@ function liveCheck(){
     tyCorrectCountMap[w.word] = (tyCorrectCountMap[w.word] || 0) + 1;
     const hits = tyCorrectCountMap[w.word];
     
-    showToast(hits >= 2 ? `✓ 正確！(${w.word} 已完成2次答對)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
+    showToast(hits >= 4 ? `✓ 正確！(${w.word} 已完成4次答對)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
     setTimeout(()=>{ tyIdx++; renderTyping(); },600);
   }
 }
@@ -1664,8 +1664,8 @@ function showTypingResult(){
   document.getElementById('typingGameArea').style.display='none';
   const grp=getActiveGroup();
   const pct=tyTotal>0?Math.round(tyCorrect/tyTotal*100):0;
-  const allHit2Times = grp.every(w => (tyCorrectCountMap[w.word] || 0) >= 2);
-  const pass = pct >= 85 && allHit2Times;
+  const allHit4Times = grp.every(w => (tyCorrectCountMap[w.word] || 0) >= 4);
+  const pass = pct >= 85 && allHit4Times;
 
   if (pass && activeGrpIdx >= 0) {
     const stats = getGroupStats(activeGrpIdx);
@@ -1677,7 +1677,7 @@ function showTypingResult(){
   document.getElementById('typingScore').textContent=pct+'%';
   document.getElementById('typingBreakdown').innerHTML=`
     <div class="rb-box"><div class="rb-num" style="color:var(--success)">${tyCorrect}</div><div class="rb-label">總答對次數</div></div>
-    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿2次答對</div></div>
+    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿4次答對</div></div>
     <div class="rb-box"><div class="rb-num">${pass ? '✓ 通過' : '未達標'}</div><div class="rb-label">第三輪狀態 (>=85%)</div></div>`;
 
   document.getElementById('typingResult').classList.add('show');
@@ -1729,7 +1729,7 @@ function startSentence(){
   stQueue = shuffle(initialPool);
   // Ensure every word is queued at least twice for the 2-hit rule
   grp.forEach(w => {
-    if (stQueue.filter(x => x.word === w.word).length < 2) {
+    if (stQueue.filter(x => x.word === w.word).length < 4) {
       stQueue.push(w);
       stQueue.push(w);
     }
@@ -1750,11 +1750,11 @@ function renderSentence(){
   const grp = getActiveGroup();
   
   // Skip words in queue that already reached 2 correct hits
-  while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= 2) {
+  while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= 3) {
     stIdx++;
   }
 
-  const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 2);
+  const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 3);
 
   if(stIdx >= stQueue.length && uncompleted.length > 0) {
     let refreshPool = [];
@@ -1806,9 +1806,9 @@ function renderSentence(){
   document.getElementById('st-phonetic').innerHTML = `<span style="color:var(--accent);font-weight:700;margin-right:8px">[${w.translation}]</span> ${w.phonetic}`;
   document.getElementById('sentenceHint').textContent = buildPartialHint(w.word);
   
-  const completedWordsCount = grp.filter(g => (stCorrectCountMap[g.word] || 0) >= 2).length;
+  const completedWordsCount = grp.filter(g => (stCorrectCountMap[g.word] || 0) >= 3).length;
   document.getElementById('st-counter').textContent =
-    `第四輪造句 (終極解鎖：各答對2次) · 已達成 ${completedWordsCount}/${grp.length} 字 (本字已對 ${currentHits}/2 次)`;
+    `第四輪造句 (終極解鎖：各答對3次) · 已達成 ${completedWordsCount}/${grp.length} 字 (本字已對 ${currentHits}/3 次)`;
   document.getElementById('st-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
   document.getElementById('st-retry-badge').style.display=errN>0?'':'none';
 
@@ -1828,7 +1828,7 @@ function liveCheckSentence(){
     stCorrectCountMap[w.word] = (stCorrectCountMap[w.word] || 0) + 1;
     const hits = stCorrectCountMap[w.word];
     
-    showToast(hits >= 2 ? `✓ 造句填空正確！(${w.word} 已滿 2 次)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
+    showToast(hits >= 4 ? `✓ 造句填空正確！(${w.word} 已滿 3 次)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
     setTimeout(()=>{ stIdx++; renderSentence(); },600);
   }
 }
@@ -1878,8 +1878,8 @@ function showSentenceResult(){
   document.getElementById('sentenceGameArea').style.display='none';
   const grp=getActiveGroup();
   const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
-  const allHit2Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 2);
-  const pass = pct >= 90 && allHit2Times;
+  const allHit3Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 3);
+  const pass = pct >= 90 && allHit3Times;
 
   if (pass && activeGrpIdx >= 0) {
     const stats = getGroupStats(activeGrpIdx);
@@ -1896,7 +1896,7 @@ function showSentenceResult(){
   document.getElementById('sentenceScore').textContent=pct+'%';
   document.getElementById('sentenceBreakdown').innerHTML=`
     <div class="rb-box"><div class="rb-num" style="color:var(--success)">${stCorrect}</div><div class="rb-label">總答對次數</div></div>
-    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿2次答對</div></div>
+    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿3次答對</div></div>
     <div class="rb-box"><div class="rb-num">${pass ? '✓ 解鎖已懂' : '未達標'}</div><div class="rb-label">第四輪狀態 (>=90%)</div></div>`;
 
   document.getElementById('sentenceResult').classList.add('show');
