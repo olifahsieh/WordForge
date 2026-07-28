@@ -2149,9 +2149,28 @@ async function openWordModal(wordStr) {
     });
   }
 
+  const getPosTranslation = (posStr, fullTr) => {
+    if (!fullTr || fullTr === '--') return '';
+    if (!posStr) return '';
+    const normPos = posStr.toLowerCase().trim();
+    const parts = fullTr.split(/[;；]/);
+    for (const part of parts) {
+      const trimmed = part.trim();
+      const match = trimmed.match(/^(noun|verb|adjective|adverb|preposition|conjunction|n|v|adj|adv)\.\s*(.*)/i);
+      if (match) {
+        const pTag = match[1].toLowerCase();
+        if (pTag === normPos || (normPos.startsWith('n') && pTag.startsWith('n')) || (normPos.startsWith('v') && pTag.startsWith('v')) || (normPos.startsWith('adj') && pTag.startsWith('adj')) || (normPos.startsWith('adv') && pTag.startsWith('adv'))) {
+          return match[2];
+        }
+      }
+    }
+    return '';
+  };
+
   const defsHtml = rawDefs.map(pos => {
+    const specificTr = getPosTranslation(pos.pos, translation);
     const items = (pos.defs || []).map((m, i) => {
-      const zhDisplay = m.defZh || translation || '';
+      const zhDisplay = m.defZh || specificTr || (pos.defs.length === 1 ? translation : '');
       return `
       <div class="def-item" style="margin-bottom:12px">
         <span class="def-num">${i + 1}</span>
@@ -2780,9 +2799,28 @@ function renderLookupResult(data){
 
   const defs = document.getElementById('lr-definitions');
   if (defs) {
+    const getPosTr = (posStr, fullTr) => {
+      if (!fullTr) return '';
+      if (!posStr) return '';
+      const normPos = posStr.toLowerCase().trim();
+      const parts = fullTr.split(/[;；]/);
+      for (const part of parts) {
+        const trimmed = part.trim();
+        const match = trimmed.match(/^(noun|verb|adjective|adverb|preposition|conjunction|n|v|adj|adv)\.\s*(.*)/i);
+        if (match) {
+          const pTag = match[1].toLowerCase();
+          if (pTag === normPos || (normPos.startsWith('n') && pTag.startsWith('n')) || (normPos.startsWith('v') && pTag.startsWith('v')) || (normPos.startsWith('adj') && pTag.startsWith('adj')) || (normPos.startsWith('adv') && pTag.startsWith('adv'))) {
+            return match[2];
+          }
+        }
+      }
+      return '';
+    };
+
     defs.innerHTML = rawDefs.map(pos=>{
+      const specificTr = getPosTr(pos.pos, primaryTr);
       const items = (pos.defs||[]).map((m,i)=>{
-        const zhDisplay = m.defZh || primaryTr;
+        const zhDisplay = m.defZh || specificTr || (pos.defs.length === 1 ? primaryTr : '');
         return `
         <div class="def-item" style="margin-bottom:12px">
           <span class="def-num">${i+1}</span>
