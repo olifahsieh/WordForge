@@ -1890,25 +1890,6 @@ function showSentenceResult(){
   }
 }
 
-}
-
-function stShowAnswer(){
-  if(stAnswerShowing||!stQueue[stIdx]) return;
-  const w=stQueue[stIdx]; stAnswerShowing=true;
-  stErrMap[w.word]=(stErrMap[w.word]||0)+1; setMastery(w.word,0);
-  document.getElementById('sentenceInput').disabled=true;
-  document.getElementById('sentenceAnswer').textContent=`${w.word}　${w.translation}`;
-  document.getElementById('sentenceAnswerWrap').style.display='block';
-  document.getElementById('stShowBtn').disabled=true;
-  let secs=5;
-  document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
-  stCountdownTimer=setInterval(()=>{
-    secs--;
-    if(secs<=0){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); }
-    else document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
-  },1000);
-}
-
 function stSkip(){
   if(stCountdownTimer){ clearInterval(stCountdownTimer); stCountdownTimer=null; }
   stIdx++; renderSentence();
