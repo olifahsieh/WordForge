@@ -2102,7 +2102,7 @@ function filterList(){
     const ws=w.word.replace(/'/g,"\\'");
     return `<tr style="cursor:pointer" onclick="openWordModal('${ws}')">
       <td><button class="speak-mini" onclick="event.stopPropagation();speak('${ws}')">▶</button></td>
-      <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent3)">第 ${grpNum} 組</td>
+      <td style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--accent3);font-weight:700">${grpNum}</td>
       <td class="en">${escHtml(w.word)}</td>
       <td class="ph">${escHtml(w.phonetic)}</td>
       <td class="tr-cell">${escHtml(w.translation)}</td>
