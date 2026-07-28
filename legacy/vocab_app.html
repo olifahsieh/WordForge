@@ -1286,11 +1286,57 @@ function practiceAllWords(){
 }
 
 // ═══════════════════════════════════════
-//  QUIZ — GROUP-BASED  (3 modes)
-//  Loops within group until all words = lvl 2
+//  4-TIER PROGRESSIVE MASTERY ALGORITHM
+//  R1: Flashcard (Manual Filter)
+//  R2: Quiz (85%+ score, min 1 correct per word -> passes weights to R3)
+//  R3: Typing (85%+ score, EACH WORD MUST BE ANSWERED CORRECTLY AT LEAST 2 TIMES -> passes to R4)
+//  R4: Sentence (90%+ score, EACH WORD MUST BE ANSWERED CORRECTLY AT LEAST 2 TIMES -> Group = 已懂)
+// ═══════════════════════════════════════
+let groupStatsMap = JSON.parse(localStorage.getItem('wf_group_stats') || '{}');
+let wordHitMap = JSON.parse(localStorage.getItem('wf_word_hits') || '{}');
+
+function getGroupStats(grpIdx) {
+  if (!groupStatsMap[grpIdx]) {
+    groupStatsMap[grpIdx] = { stage: 1, r2Done: false, r3Done: false, r4Done: false };
+  }
+  return groupStatsMap[grpIdx];
+}
+
+function saveGroupStats() {
+  localStorage.setItem('wf_group_stats', JSON.stringify(groupStatsMap));
+  localStorage.setItem('wf_word_hits', JSON.stringify(wordHitMap));
+}
+
+function recordWordHit(mode, word, isCorrect) {
+  if (!wordHitMap[word]) {
+    wordHitMap[word] = { quizErr: 0, typingCorrect: 0, typingErr: 0, sentenceCorrect: 0, sentenceErr: 0 };
+  }
+  const stat = wordHitMap[word];
+  if (mode === 'quiz') {
+    if (!isCorrect) stat.quizErr++;
+  } else if (mode === 'typing') {
+    if (isCorrect) stat.typingCorrect++;
+    else stat.typingErr++;
+  } else if (mode === 'sentence') {
+    if (isCorrect) stat.sentenceCorrect++;
+    else stat.sentenceErr++;
+  }
+  saveGroupStats();
+}
+
+function getWordWeight(word) {
+  const stat = wordHitMap[word];
+  if (!stat) return 1;
+  let weight = 1 + (stat.quizErr * 2) + (stat.typingErr * 2) + (stat.sentenceErr * 2);
+  return Math.min(weight, 8);
+}
+
+// ═══════════════════════════════════════
+//  QUIZ — ROUND 2
 // ═══════════════════════════════════════
 let quizMode='en2zh', currentQuizWord=null;
 let quizQueue=[], quizIdx=0, quizCorrect=0, quizTotal=0, quizAnswered=false;
+let quizWordHitThisSession = {};
 
 function setQuizMode(m,btn){
   quizMode=m;
@@ -1308,18 +1354,31 @@ function startQuiz(){
   document.getElementById('quizGameArea').style.display='block';
   renderGrpBanner('quiz-group-banner','selectQuizGroup');
   const grp=getActiveGroup();
-  quizQueue=shuffle([...grp]);
+  
+  // Build weighted queue based on Round 1 mastery and previous error stats
+  let weightedPool = [];
+  grp.forEach(w => {
+    const mst = getMastery(w.word);
+    let weight = getWordWeight(w.word);
+    if (mst === 0) weight += 2; // R1 "不熟" gets boosted
+    for (let i = 0; i < weight; i++) {
+      weightedPool.push(w);
+    }
+  });
+  
+  quizQueue = shuffle([...grp]); // Ensure all words appear at least once
+  quizWordHitThisSession = {};
   quizIdx=0; quizCorrect=0; quizTotal=grp.length; quizAnswered=false;
   renderQuiz();
 }
 
 function renderQuiz(){
-  // If queue exhausted, check if group still has unmastered words → re-queue
   if(quizIdx>=quizQueue.length){
-    const notDone=getActiveGroup().filter(w=>getMastery(w.word)<2);
-    if(notDone.length){
-      quizQueue.push(...shuffle(notDone));
-      showToast(`🔁 繼續練習 ${notDone.length} 個未完成單字`);
+    const grp = getActiveGroup();
+    const unhit = grp.filter(w => !quizWordHitThisSession[w.word]);
+    if(unhit.length){
+      quizQueue.push(...shuffle(unhit));
+      showToast(`🔁 第一階段：補測 ${unhit.length} 個尚未答對單字`);
     } else { showQuizResult(); return; }
   }
   if(quizIdx>=quizQueue.length){ showQuizResult(); return; }
@@ -1331,17 +1390,15 @@ function renderQuiz(){
   document.getElementById('quizMasteryRow').style.display='none';
 
   const correct=quizQueue[quizIdx]; currentQuizWord=correct; _currentWord=correct.word;
-  // Use all WORDS for distractors so options are diverse
   const wrongs=shuffle(WORDS.filter(w=>w.word!==correct.word)).slice(0,3);
   const opts=shuffle([correct,...wrongs]);
 
   const la=document.getElementById('q-listen-area');
   const ta=document.getElementById('q-text-area');
   const grp=getActiveGroup();
-  const doneCnt=grp.filter(w=>getMastery(w.word)===2).length;
   const modeLabel = quizMode==='listen' ? '🔊 聽音選出正確中文翻譯'
-    : quizMode==='en2zh' ? '選出正確的中文翻譯' : '選出正確的英文單字';
-  document.getElementById('q-type-label').textContent=`${modeLabel}  ·  ${doneCnt}/${grp.length} 已懂`;
+    : quizMode==='en2zh' ? '第二輪：猜字測驗 (選正確中文)' : '第二輪：猜字測驗 (選正確英文)';
+  document.getElementById('q-type-label').textContent=`${modeLabel}  ·  當前組 ${grp.length} 字`;
 
   if(quizMode==='listen'){
     la.style.display=''; ta.style.display='none';
@@ -1372,13 +1429,18 @@ function speakQuizWord(rate=1){ if(currentQuizWord) speak(currentQuizWord.word,r
 function answerQuiz(btn,chosen,correct){
   if(quizAnswered) return; quizAnswered=true;
   const ok=chosen.word===correct.word;
+  recordWordHit('quiz', correct.word, ok);
+  
   btn.classList.add(ok?'correct':'wrong');
   if(!ok){
     document.querySelectorAll('.option-btn').forEach(b=>{
       const lbl=(quizMode==='zh2en')?correct.word:correct.translation;
       if(b.textContent.includes(lbl.slice(0,12))) b.classList.add('correct');
     });
+  } else {
+    quizWordHitThisSession[correct.word] = true;
   }
+  
   document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
   const fb=document.getElementById('quizFeedback');
   if(ok){ quizCorrect++; streak++; fb.textContent='✓ 答對了！'; fb.className='quiz-feedback ok'; }
@@ -1398,33 +1460,41 @@ function nextQuiz(){ quizIdx++; renderQuiz(); }
 
 function showQuizResult(){
   document.getElementById('quizGameArea').style.display='none';
-  const pct=quizTotal>0?Math.round(quizCorrect/quizTotal*100):0;
-  document.getElementById('quizScore').textContent=pct+'%';
-  const {done,total}=grpProgress(activeGrpIdx);
-  document.getElementById('quizBreakdown').innerHTML=`
+  const grp = getActiveGroup();
+  const pct = quizTotal>0 ? Math.round(quizCorrect/quizTotal*100) : 0;
+  const pass = pct >= 85 && Object.keys(quizWordHitThisSession).length >= grp.length;
+  
+  if (pass && activeGrpIdx >= 0) {
+    const stats = getGroupStats(activeGrpIdx);
+    stats.r2Done = true;
+    stats.stage = Math.max(stats.stage, 3);
+    saveGroupStats();
+  }
+
+  document.getElementById('quizScore').textContent = pct + '%';
+  document.getElementById('quizBreakdown').innerHTML = `
     <div class="rb-box"><div class="rb-num" style="color:var(--success)">${quizCorrect}</div><div class="rb-label">答對</div></div>
     <div class="rb-box"><div class="rb-num" style="color:var(--danger)">${quizTotal-quizCorrect}</div><div class="rb-label">答錯</div></div>
-    <div class="rb-box"><div class="rb-num">${done}/${total}</div><div class="rb-label">已懂</div></div>`;
-  const isDone=isGroupDone(activeGrpIdx);
-  const hasNext=activeGrpIdx<wordGroups.length-1;
-  document.getElementById('quizGroupMsg').textContent = isDone
-    ? `🎉 第 ${activeGrpIdx+1} 組全數已懂！`
-    : `第 ${activeGrpIdx+1} 組還有 ${total-done} 個單字未達已懂，繼續加油！`;
+    <div class="rb-box"><div class="rb-num">${pass ? '✓ 通過' : '未達標'}</div><div class="rb-label">第二輪狀態 (需>=85%)</div></div>`;
+    
+  document.getElementById('quizGroupMsg').textContent = pass
+    ? `🎉 第二輪「猜字」完成！正確率 ${pct}%，權重已成功轉移給第三輪「拼字」測驗。`
+    : `正確率 ${pct}%（需達85%且每字皆答對過），請再次挑戰第二輪測驗！`;
+    
   const nb=document.getElementById('quizResultNextBtn');
-  nb.style.display=isDone&&hasNext?'':'none';
+  nb.style.display = pass ? '' : 'none';
+  nb.textContent = '進入第三輪拼字 →';
+  nb.onclick = () => switchMode('typing');
+  
   document.getElementById('quizResult').classList.add('show');
-  if(isDone) checkShowGroupDone('quiz-group-complete','quiz-complete-gnum','quiz-next-group-btn');
 }
 
 // ═══════════════════════════════════════
-//  TYPING — GROUP-BASED, smart SRS retry
-//  • 20-30% random hint shown from start
-//  • correct → next immediately
-//  • wrong → mark 不熟, loop until all group = lvl 2
-//  • 2 ghost buttons: 顯示答案 (5s countdown) | 跳過
+//  TYPING — ROUND 3 (REQUIRES EACH WORD >= 2 CORRECT ANSWERS)
 // ═══════════════════════════════════════
 let tyQueue=[], tyIdx=0, tyCorrect=0, tyTotal=0;
 let tyErrMap={};
+let tyCorrectCountMap={}; // Track 2-hit requirement per word
 let tyCountdownTimer=null, tyAnswerShowing=false;
 
 function buildPartialHint(word){
@@ -1445,8 +1515,25 @@ function startTyping(){
   document.getElementById('typingGameArea').style.display='block';
   renderGrpBanner('typing-group-banner','selectTypingGroup');
   const grp=getActiveGroup();
-  tyQueue=shuffle([...grp]);
-  tyIdx=0; tyCorrect=0; tyTotal=grp.length; tyErrMap={};
+  
+  // Inherit Round 2 quiz stats to weight queue order
+  let initialPool = [];
+  grp.forEach(w => {
+    const wgt = getWordWeight(w.word);
+    for(let i=0; i<wgt; i++) initialPool.push(w);
+  });
+  
+  tyQueue = shuffle(initialPool);
+  // Ensure every word is queued at least twice for the 2-hit rule
+  grp.forEach(w => {
+    if (tyQueue.filter(x => x.word === w.word).length < 2) {
+      tyQueue.push(w);
+      tyQueue.push(w);
+    }
+  });
+  tyQueue = shuffle(tyQueue);
+  
+  tyIdx=0; tyCorrect=0; tyTotal=tyQueue.length; tyErrMap={}; tyCorrectCountMap={};
   renderTyping();
 }
 
@@ -1457,26 +1544,34 @@ function renderTyping(){
   document.getElementById('tyWrongMsg').textContent='';
   document.getElementById('tyShowBtn').disabled=false;
 
-  if(tyIdx>=tyQueue.length){
-    const notDone=getActiveGroup().filter(w=>getMastery(w.word)<2);
-    if(notDone.length){
-      tyQueue.push(...shuffle(notDone));
-      showToast(`🔁 複習 ${notDone.length} 個未完成單字`);
-    } else { showTypingResult(); return; }
+  const grp = getActiveGroup();
+  // Check if all words in current group have at least 2 correct hits
+  const uncompleted = grp.filter(w => (tyCorrectCountMap[w.word] || 0) < 2);
+
+  if(tyIdx >= tyQueue.length && uncompleted.length > 0) {
+    // Re-queue remaining uncompleted words
+    uncompleted.forEach(w => {
+      tyQueue.push(w);
+      tyQueue.push(w);
+    });
+    tyQueue = shuffle(tyQueue);
+    showToast(`🔁 第三輪拼字：補充 ${uncompleted.length} 個尚未答對 2 次的單字`);
   }
-  if(tyIdx>=tyQueue.length){ showTypingResult(); return; }
+
+  if(tyIdx>=tyQueue.length && uncompleted.length === 0){ showTypingResult(); return; }
 
   const w=tyQueue[tyIdx]; _currentWord=w.word;
-  const grp=getActiveGroup();
-  const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
+  const currentHits = tyCorrectCountMap[w.word] || 0;
   const errN=tyErrMap[w.word]||0;
 
   document.getElementById('ty-prompt').textContent=w.translation;
   document.getElementById('ty-phonetic').textContent=w.phonetic;
   document.getElementById('typingHint').textContent=buildPartialHint(w.word);
+  
+  const completedWordsCount = grp.filter(g => (tyCorrectCountMap[g.word] || 0) >= 2).length;
   document.getElementById('ty-counter').textContent=
-    `${Math.min(tyIdx+1,tyTotal)} / ${tyTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
-  document.getElementById('ty-progress-bar').style.width=`${(doneCnt/grp.length)*100}%`;
+    `第三輪拼字 (需各答對2次) ·  已達成 ${completedWordsCount}/${grp.length} 字  (本字已對 ${currentHits}/2 次)`;
+  document.getElementById('ty-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
   document.getElementById('ty-retry-badge').style.display=errN>0?'':'none';
 
   const inp=document.getElementById('typingInput');
@@ -1490,11 +1585,12 @@ function liveCheck(){
   if(inp.value.trim().toLowerCase()===w.word.toLowerCase()){
     inp.className='typing-input correct-input'; inp.disabled=true;
     tyCorrect++; streak++;
-    const errN=tyErrMap[w.word]||0;
-    // no prior errors → 已懂; had errors → 稍懂
-    setMastery(w.word, errN===0?2:1);
-    delete tyErrMap[w.word];
-    showToast(errN===0?'✓ 正確！':'△ 稍懂 — 繼續練習！');
+    recordWordHit('typing', w.word, true);
+    
+    tyCorrectCountMap[w.word] = (tyCorrectCountMap[w.word] || 0) + 1;
+    const hits = tyCorrectCountMap[w.word];
+    
+    showToast(hits >= 2 ? `✓ 正確！(${w.word} 已完成2次答對)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
     setTimeout(()=>{ tyIdx++; renderTyping(); },600);
   }
 }
@@ -1509,9 +1605,9 @@ function handleTypingKey(e){
   const val=inp.value.trim().toLowerCase(); if(!val) return;
   if(val!==w.word.toLowerCase()){
     inp.className='typing-input wrong-input';
+    recordWordHit('typing', w.word, false);
     tyErrMap[w.word]=(tyErrMap[w.word]||0)+1;
-    setMastery(w.word,0);
-    document.getElementById('tyWrongMsg').textContent=`✕ 錯誤 (${tyErrMap[w.word]}次) — 稍後再出現`;
+    document.getElementById('tyWrongMsg').textContent=`✕ 拼寫錯誤 — 本題重算並排入複習`;
     setTimeout(()=>{ inp.className='typing-input'; inp.value=''; inp.focus();
       document.getElementById('tyWrongMsg').textContent=''; },500);
   }
@@ -1520,7 +1616,8 @@ function handleTypingKey(e){
 function tyShowAnswer(){
   if(tyAnswerShowing||!tyQueue[tyIdx]) return;
   const w=tyQueue[tyIdx]; tyAnswerShowing=true;
-  tyErrMap[w.word]=(tyErrMap[w.word]||0)+1; setMastery(w.word,0);
+  recordWordHit('typing', w.word, false);
+  tyErrMap[w.word]=(tyErrMap[w.word]||0)+1;
   document.getElementById('typingInput').disabled=true;
   document.getElementById('typingAnswer').textContent=`${w.word}　${w.translation}`;
   document.getElementById('typingAnswerWrap').style.display='block';
@@ -1542,35 +1639,48 @@ function tySkip(){
 function showTypingResult(){
   document.getElementById('typingGameArea').style.display='none';
   const grp=getActiveGroup();
-  const doneCnt=grp.filter(w=>getMastery(w.word)===2).length;
   const pct=tyTotal>0?Math.round(tyCorrect/tyTotal*100):0;
+  const allHit2Times = grp.every(w => (tyCorrectCountMap[w.word] || 0) >= 2);
+  const pass = pct >= 85 && allHit2Times;
+
+  if (pass && activeGrpIdx >= 0) {
+    const stats = getGroupStats(activeGrpIdx);
+    stats.r3Done = true;
+    stats.stage = Math.max(stats.stage, 4);
+    saveGroupStats();
+  }
+
   document.getElementById('typingScore').textContent=pct+'%';
-  const errWords=Object.entries(tyErrMap).filter(([,v])=>v>0);
   document.getElementById('typingBreakdown').innerHTML=`
-    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${tyCorrect}</div><div class="rb-label">答對</div></div>
-    <div class="rb-box"><div class="rb-num" style="color:var(--danger)">${tyTotal-tyCorrect}</div><div class="rb-label">答錯</div></div>
-    <div class="rb-box"><div class="rb-num">${doneCnt}/${grp.length}</div><div class="rb-label">已懂</div></div>`;
-  const missed=document.getElementById('typingMissed');
-  missed.innerHTML=errWords.length
-    ? `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">需加強</div>`
-      +errWords.map(([w,c])=>{
-        const wObj=WORDS.find(x=>x.word===w);
-        return `<div style="display:flex;justify-content:space-between;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-bottom:5px;font-size:.82rem">
-          <span style="font-family:'Space Mono',monospace;color:var(--accent)">${escHtml(w)}</span>
-          <span style="color:var(--muted);flex:1;margin:0 10px">${wObj?escHtml(wObj.translation):''}</span>
-          <span style="font-family:'Space Mono',monospace;color:var(--accent2);font-size:.65rem">錯${c}次</span>
-        </div>`;
-      }).join('') : '';
+    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${tyCorrect}</div><div class="rb-label">總答對次數</div></div>
+    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿2次答對</div></div>
+    <div class="rb-box"><div class="rb-num">${pass ? '✓ 通過' : '未達標'}</div><div class="rb-label">第三輪狀態 (>=85%)</div></div>`;
+
   document.getElementById('typingResult').classList.add('show');
-  if(isGroupDone(activeGrpIdx)) checkShowGroupDone('typing-group-complete','typing-complete-gnum','typing-next-group-btn');
-  renderGrpBanner('typing-group-banner','selectTypingGroup');
+  
+  const missed=document.getElementById('typingMissed');
+  missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--accent3)">
+    ${pass ? '🎉 第三輪「拼字」合格！權重與錯誤紀錄已轉移至第四輪「造句」！' : '未達到 85% 正確率或有單字未滿 2 次答對，請重新練習第三輪。'}
+  </div>`;
+
+  if (pass) {
+    const btn = document.createElement('button');
+    btn.className = 'restart-btn';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+    btn.style.marginTop = '15px';
+    btn.textContent = '進入第四輪造句 (終極關卡) →';
+    btn.onclick = () => switchMode('sentence');
+    missed.appendChild(btn);
+  }
 }
 
 // ═══════════════════════════════════════
-//  SENTENCE CONTEXT PRACTICE (✍️ 造句)
+//  SENTENCE — ROUND 4 (FINAL TIER: 90%+ & EACH WORD >= 2 CORRECT)
 // ═══════════════════════════════════════
 let stQueue=[], stIdx=0, stCorrect=0, stTotal=0;
 let stErrMap={};
+let stCorrectCountMap={};
 let stCountdownTimer=null, stAnswerShowing=false;
 
 function selectSentenceGroup(idx){ selectGlobalGroup(idx); }
@@ -1584,8 +1694,25 @@ function startSentence(){
   document.getElementById('sentenceGameArea').style.display='block';
   renderGrpBanner('sentence-group-banner','selectSentenceGroup');
   const grp=getActiveGroup();
-  stQueue=shuffle([...grp]);
-  stIdx=0; stCorrect=0; stTotal=grp.length; stErrMap={};
+  
+  // Inherit accumulated error weight from Quiz & Typing
+  let initialPool = [];
+  grp.forEach(w => {
+    const wgt = getWordWeight(w.word);
+    for(let i=0; i<wgt; i++) initialPool.push(w);
+  });
+  
+  stQueue = shuffle(initialPool);
+  // Ensure every word is queued at least twice for the 2-hit rule
+  grp.forEach(w => {
+    if (stQueue.filter(x => x.word === w.word).length < 2) {
+      stQueue.push(w);
+      stQueue.push(w);
+    }
+  });
+  stQueue = shuffle(stQueue);
+
+  stIdx=0; stCorrect=0; stTotal=stQueue.length; stErrMap={}; stCorrectCountMap={};
   renderSentence();
 }
 
@@ -1596,21 +1723,24 @@ function renderSentence(){
   document.getElementById('stWrongMsg').textContent='';
   document.getElementById('stShowBtn').disabled=false;
 
-  if(stIdx>=stQueue.length){
-    const notDone=getActiveGroup().filter(w=>getMastery(w.word)<2);
-    if(notDone.length){
-      stQueue.push(...shuffle(notDone));
-      showToast(`🔁 複習 ${notDone.length} 個未完成單字`);
-    } else { showSentenceResult(); return; }
+  const grp = getActiveGroup();
+  const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 2);
+
+  if(stIdx >= stQueue.length && uncompleted.length > 0) {
+    uncompleted.forEach(w => {
+      stQueue.push(w);
+      stQueue.push(w);
+    });
+    stQueue = shuffle(stQueue);
+    showToast(`🔁 第四輪造句：補充 ${uncompleted.length} 個尚未答對 2 次的單字`);
   }
-  if(stIdx>=stQueue.length){ showSentenceResult(); return; }
+
+  if(stIdx>=stQueue.length && uncompleted.length === 0){ showSentenceResult(); return; }
 
   const w=stQueue[stIdx]; _currentWord=w.word;
-  const grp=getActiveGroup();
-  const doneCnt=grp.filter(g=>getMastery(g.word)===2).length;
+  const currentHits = stCorrectCountMap[w.word] || 0;
   const errN=stErrMap[w.word]||0;
 
-  // Extract example sentence & mask target word
   let sentenceEn = "";
   let sentenceZh = "";
 
@@ -1643,14 +1773,115 @@ function renderSentence(){
 
   document.getElementById('st-phonetic').innerHTML = `<span style="color:var(--accent);font-weight:700;margin-right:8px">[${w.translation}]</span> ${w.phonetic}`;
   document.getElementById('sentenceHint').textContent = buildPartialHint(w.word);
+  
+  const completedWordsCount = grp.filter(g => (stCorrectCountMap[g.word] || 0) >= 2).length;
   document.getElementById('st-counter').textContent =
-    `${Math.min(stIdx+1,stTotal)} / ${stTotal}  ·  ${doneCnt}/${grp.length} 已懂`+(errN>0?`  (錯${errN}次)`:'');
-  document.getElementById('st-progress-bar').style.width=`${(doneCnt/grp.length)*100}%`;
+    `第四輪造句 (終極解鎖：各答對2次) · 已達成 ${completedWordsCount}/${grp.length} 字 (本字已對 ${currentHits}/2 次)`;
+  document.getElementById('st-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
   document.getElementById('st-retry-badge').style.display=errN>0?'':'none';
 
   const inp=document.getElementById('sentenceInput');
   inp.value=''; inp.className='typing-input'; inp.disabled=false; inp.focus();
 }
+
+function liveCheckSentence(){
+  if(!stQueue[stIdx]) return;
+  const w=stQueue[stIdx];
+  const inp=document.getElementById('sentenceInput');
+  if(inp.value.trim().toLowerCase()===w.word.toLowerCase()){
+    inp.className='typing-input correct-input'; inp.disabled=true;
+    stCorrect++; streak++;
+    recordWordHit('sentence', w.word, true);
+    
+    stCorrectCountMap[w.word] = (stCorrectCountMap[w.word] || 0) + 1;
+    const hits = stCorrectCountMap[w.word];
+    
+    showToast(hits >= 2 ? `✓ 造句填空正確！(${w.word} 已滿 2 次)` : `✓ 正確！(${w.word} 還需答對 1 次)`);
+    setTimeout(()=>{ stIdx++; renderSentence(); },600);
+  }
+}
+
+function handleSentenceKey(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  if(stAnswerShowing){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); return; }
+  if(!stQueue[stIdx]) return;
+  const w=stQueue[stIdx];
+  const inp=document.getElementById('sentenceInput');
+  const val=inp.value.trim().toLowerCase(); if(!val) return;
+  if(val!==w.word.toLowerCase()){
+    inp.className='typing-input wrong-input';
+    recordWordHit('sentence', w.word, false);
+    stErrMap[w.word]=(stErrMap[w.word]||0)+1;
+    document.getElementById('stWrongMsg').textContent=`✕ 填空錯誤 — 本題重算並排入複習`;
+    setTimeout(()=>{ inp.className='typing-input'; inp.value=''; inp.focus();
+      document.getElementById('stWrongMsg').textContent=''; },500);
+  }
+}
+
+function stShowAnswer(){
+  if(stAnswerShowing||!stQueue[stIdx]) return;
+  const w=stQueue[stIdx]; stAnswerShowing=true;
+  recordWordHit('sentence', w.word, false);
+  stErrMap[w.word]=(stErrMap[w.word]||0)+1;
+  document.getElementById('sentenceInput').disabled=true;
+  document.getElementById('sentenceAnswer').textContent=`${w.word}　${w.translation}`;
+  document.getElementById('sentenceAnswerWrap').style.display='block';
+  document.getElementById('stShowBtn').disabled=true;
+  let secs=5;
+  document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
+  stCountdownTimer=setInterval(()=>{
+    secs--;
+    if(secs<=0){ clearInterval(stCountdownTimer); stCountdownTimer=null; stIdx++; renderSentence(); }
+    else document.getElementById('stCountdown').textContent=`${secs}秒後自動進入下一題`;
+  },1000);
+}
+
+function stSkip(){
+  if(stCountdownTimer){ clearInterval(stCountdownTimer); stCountdownTimer=null; }
+  stIdx++; renderSentence();
+}
+
+function showSentenceResult(){
+  document.getElementById('sentenceGameArea').style.display='none';
+  const grp=getActiveGroup();
+  const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
+  const allHit2Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 2);
+  const pass = pct >= 90 && allHit2Times;
+
+  if (pass && activeGrpIdx >= 0) {
+    const stats = getGroupStats(activeGrpIdx);
+    stats.r4Done = true;
+    stats.stage = 4;
+    saveGroupStats();
+    
+    // OFFICIALLY MARK ENTIRE GROUP WORDS AS "已懂" (LEVEL 2) IN MASTERY MAP & WORD TABLE
+    grp.forEach(w => setMastery(w.word, 2));
+    saveAll();
+    updateHeader();
+  }
+
+  document.getElementById('sentenceScore').textContent=pct+'%';
+  document.getElementById('sentenceBreakdown').innerHTML=`
+    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${stCorrect}</div><div class="rb-label">總答對次數</div></div>
+    <div class="rb-box"><div class="rb-num">${grp.length}/${grp.length}</div><div class="rb-label">每字滿2次答對</div></div>
+    <div class="rb-box"><div class="rb-num">${pass ? '✓ 解鎖已懂' : '未達標'}</div><div class="rb-label">第四輪狀態 (>=90%)</div></div>`;
+
+  document.getElementById('sentenceResult').classList.add('show');
+  
+  const missed=document.getElementById('sentenceMissed');
+  if (pass) {
+    missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.9rem;color:var(--success);font-weight:700">
+      🏆 恭喜！本組 25 個單字已正式通過第四輪考驗，單字表已全數自動標記為「✓ 已懂」！
+    </div>`;
+    checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
+  } else {
+    missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--accent2)">
+      未達到 90% 正確率或有單字未滿 2 次答對，請重新進行第四輪造句練習！
+    </div>`;
+  }
+}
+
 
 function liveCheckSentence(){
   if(!stQueue[stIdx]) return;
