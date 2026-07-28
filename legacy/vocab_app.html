@@ -2588,15 +2588,23 @@ async function callDictAPI(word) {
     });
   }
 
-  // Ensure defZh is populated
-  definitions.forEach(pos => {
-    pos.defs.forEach(d => {
+  // Translate full English definition sentences to Chinese
+  for (const pos of definitions) {
+    for (const d of pos.defs) {
+      if (d.def && d.def.length > 5) {
+        try {
+          const fullZh = await translateToZh(d.def);
+          if (fullZh && fullZh.toLowerCase() !== d.def.toLowerCase()) {
+            d.defZh = fullZh;
+          }
+        } catch(e) {}
+      }
       if (!d.defZh) {
         const terms = gtDictMap[pos.pos] || gtDictMap['noun'] || gtDictMap['verb'] || gtDictMap['adjective'] || [];
         d.defZh = terms.length ? terms.join('、 ') : zhWordTr;
       }
-    });
-  });
+    }
+  }
 
   // Extract examples from gtData[13] (Oxford examples) or FreeDict
   const rawExamples = [];
