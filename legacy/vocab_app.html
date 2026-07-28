@@ -1007,8 +1007,10 @@ function renderGrpBanner(containerId, clickFn){
     const done=isGroupDone(i);
     const active=i===activeGrpIdx;
     const {done:d,total:t}=grpProgress(i);
+    const st = getGroupStats(i);
+    const stageLabel = st.r4Done ? '🏆' : `R${st.stage || 1}`;
     let cls='group-pill'+(active?' active':'')+(done?' done':'');
-    return `<button class="${cls}" onclick="selectGlobalGroup(${i})" title="第${i+1}組 ${d}/${t}已懂">第${i+1}組</button>`;
+    return `<button class="${cls}" onclick="selectGlobalGroup(${i})" title="第${i+1}組 [${stageLabel}] ${d}/${t}已懂">第${i+1}組 <small style="opacity:0.75;font-size:0.52rem">(${stageLabel})</small></button>`;
   }).join('');
 
   let infoHtml = '';
@@ -1295,6 +1297,10 @@ function practiceAllWords(){
 let groupStatsMap = JSON.parse(localStorage.getItem('wf_group_stats') || '{}');
 let wordHitMap = JSON.parse(localStorage.getItem('wf_word_hits') || '{}');
 
+// Explicit state objects for external API & debugger access
+window.groupProgressState = groupStatsMap;
+window.wordQuizState = wordHitMap;
+
 function getGroupStats(grpIdx) {
   if (!groupStatsMap[grpIdx]) {
     groupStatsMap[grpIdx] = { stage: 1, r2Done: false, r3Done: false, r4Done: false };
@@ -1305,6 +1311,8 @@ function getGroupStats(grpIdx) {
 function saveGroupStats() {
   localStorage.setItem('wf_group_stats', JSON.stringify(groupStatsMap));
   localStorage.setItem('wf_word_hits', JSON.stringify(wordHitMap));
+  window.groupProgressState = groupStatsMap;
+  window.wordQuizState = wordHitMap;
 }
 
 function recordWordHit(mode, word, isCorrect) {
