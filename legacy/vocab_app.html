@@ -1451,10 +1451,19 @@ function answerQuiz(btn,chosen,correct){
   
   document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
   const fb=document.getElementById('quizFeedback');
-  if(ok){ quizCorrect++; streak++; fb.textContent='✓ 答對了！'; fb.className='quiz-feedback ok'; }
-  else{ streak=0; fb.textContent=`✕ 正確答案：${(quizMode==='zh2en')?correct.word:correct.translation}`; fb.className='quiz-feedback fail'; }
-  saveAll(); updateHeader();
-  document.getElementById('quizMasteryRow').style.display='flex';
+  if(ok){ 
+    quizCorrect++; streak++; 
+    fb.textContent='✓ 答對了！'; 
+    fb.className='quiz-feedback ok'; 
+    saveAll(); updateHeader();
+    setTimeout(() => { quizIdx++; renderQuiz(); }, 500);
+  } else { 
+    streak=0; 
+    fb.textContent=`✕ 正確答案：${(quizMode==='zh2en')?correct.word:correct.translation}`; 
+    fb.className='quiz-feedback fail'; 
+    saveAll(); updateHeader();
+    document.getElementById('nextBtn').disabled=false;
+  }
 }
 
 function quizMastery(lvl){
