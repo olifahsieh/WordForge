@@ -633,11 +633,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   <div class="list-controls">
     <input class="search-input" id="searchInput" placeholder="搜尋單字或翻譯…" oninput="filterList()">
     <button class="sort-btn active" id="sort-alpha" onclick="sortList('alpha')">A-Z</button>
+    <button class="sort-btn" id="sort-group" onclick="sortList('group')">組別</button>
     <button class="sort-btn" id="sort-date" onclick="sortList('date')">日期</button>
     <button class="sort-btn" id="sort-level" onclick="sortList('level')">熟悉度</button>
   </div>
   <table class="word-table">
-    <thead><tr><th></th><th>英文</th><th>音標</th><th>翻譯</th><th>熟悉度</th></tr></thead>
+    <thead><tr><th></th><th>組別</th><th>英文</th><th>音標</th><th>翻譯</th><th>熟悉度</th></tr></thead>
     <tbody id="wordTableBody"></tbody>
   </table>
 </div>
@@ -2072,25 +2073,36 @@ function startSRSSession(){
 //  WORD LIST
 // ═══════════════════════════════════════
 let sortMode='alpha';
+function getWordGroupIdx(targetWord){
+  const idx = WORDS.findIndex(w => w.word.toLowerCase() === targetWord.toLowerCase());
+  if (idx < 0) return 9999;
+  return Math.floor(idx / GROUP_SIZE) + 1;
+}
+
 function sortList(mode){
   sortMode=mode;
   document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sort-'+mode).classList.add('active');
+  const btn = document.getElementById('sort-'+mode);
+  if (btn) btn.classList.add('active');
   filterList();
 }
+
 function filterList(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   let filtered=WORDS.filter(w=>w.word.toLowerCase().includes(q)||w.translation.includes(q));
   if(sortMode==='alpha') filtered.sort((a,b)=>a.word.localeCompare(b.word));
+  else if(sortMode==='group') filtered.sort((a,b)=>getWordGroupIdx(a.word) - getWordGroupIdx(b.word));
   else if(sortMode==='date') filtered.sort((a,b)=>b.date.localeCompare(a.date));
   else if(sortMode==='level') filtered.sort((a,b)=>(getMastery(b.word)+1)-(getMastery(a.word)+1));
   const lvlL=['不熟','稍懂','已懂'],lvlC=['b0','b1','b2'];
   document.getElementById('wordTableBody').innerHTML=filtered.map(w=>{
     const lvl=getMastery(w.word);
+    const grpNum=getWordGroupIdx(w.word);
     const badge=lvl<0?`<span class="lvl-badge bn">未學</span>`:`<span class="lvl-badge ${lvlC[lvl]}">${lvlL[lvl]}</span>`;
     const ws=w.word.replace(/'/g,"\\'");
     return `<tr style="cursor:pointer" onclick="openWordModal('${ws}')">
       <td><button class="speak-mini" onclick="event.stopPropagation();speak('${ws}')">▶</button></td>
+      <td style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--accent3)">第 ${grpNum} 組</td>
       <td class="en">${escHtml(w.word)}</td>
       <td class="ph">${escHtml(w.phonetic)}</td>
       <td class="tr-cell">${escHtml(w.translation)}</td>
