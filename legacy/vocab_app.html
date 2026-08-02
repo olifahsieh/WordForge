@@ -1986,30 +1986,14 @@ function selectSRSGroup(idx){
 
 function getDueWords(){
   const today = todayStr();
-  let baseList;
-  if (srsFilterMode === 'memory') {
-    const all = getAllGlobalWords();
-    baseList = all.filter(w => getMastery(w.word) >= 0);
-  } else if (srsFilterMode === 'group') {
-    const grpIdx = activeGrpIdx >= 0 ? activeGrpIdx : 0;
-    baseList = wordGroups[grpIdx] || [];
-  } else {
-    baseList = WORDS;
-  }
+  let baseList = (activeGrpIdx === -1 || srsFilterMode === 'memory') ? getAllGlobalWords().filter(w => getMastery(w.word) >= 0) : WORDS;
 
-  // Filter candidate words due today or overdue
-  const candidates = baseList.filter(w => {
-    const lvl = getMastery(w.word);
-    if (lvl < 0) return (srsFilterMode !== 'memory');
-    return !srsMap[w.word] || srsMap[w.word] <= today;
-  });
-
-  if (srsFilterMode === 'memory') {
-    // Memory vault SRS daily refresh: no accumulation, max 45 words per day
+  if (activeGrpIdx === -1 || srsFilterMode === 'memory') {
     let dailyCache = JSON.parse(localStorage.getItem('wf_srs_daily_cache') || '{}');
-    if (dailyCache.date !== today || !Array.isArray(dailyCache.words)) {
-      // Prioritize words: lower mastery level first (不熟 -> 稍懂), then by SRS due date
-      const sorted = [...candidates].sort((a, b) => {
+    if (dailyCache.date !== today || !Array.isArray(dailyCache.words) || dailyCache.words.length === 0) {
+      const candidates = baseList.filter(w => !srsMap[w.word] || srsMap[w.word] <= today);
+      const pool = candidates.length ? candidates : baseList;
+      const sorted = [...pool].sort((a, b) => {
         const ma = getMastery(a.word), mb = getMastery(b.word);
         if (ma !== mb) return ma - mb;
         return (srsMap[a.word] || '').localeCompare(srsMap[b.word] || '');
@@ -2018,11 +2002,15 @@ function getDueWords(){
       dailyCache = { date: today, words: selectedWords };
       localStorage.setItem('wf_srs_daily_cache', JSON.stringify(dailyCache));
     }
-    const cachedSet = new Set(dailyCache.words);
-    return candidates.filter(w => cachedSet.has(w.word)).slice(0, 45);
+    
+    // Return all 45 cached words for today regardless of intermediate setMastery date updates
+    const allMap = new Map(getAllGlobalWords().map(w => [w.word.toLowerCase(), w]));
+    const cachedList = dailyCache.words.map(wStr => allMap.get(wStr.toLowerCase())).filter(Boolean);
+    return cachedList.length ? cachedList : baseList.slice(0, 45);
   }
 
-  return candidates.slice(0, 45);
+  const grpIdx = activeGrpIdx >= 0 ? activeGrpIdx : 0;
+  return wordGroups[grpIdx] || [];
 }
 
 function renderSRS(){
