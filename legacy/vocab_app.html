@@ -582,7 +582,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       <div class="result-label">答對率</div>
       <div class="result-breakdown" id="sentenceBreakdown"></div>
       <div id="sentenceMissed" style="margin-bottom:24px"></div>
-      <button class="restart-btn" onclick="startSentence()">再來一次</button>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="restart-btn" id="stRestartNormal" onclick="startSentence(false)">重練本組</button>
+        <button class="restart-btn" id="stRestartFocus" style="border-color:var(--accent2);color:var(--accent2);display:none" onclick="startSentence(true)">重點強化挑戰</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1732,31 +1735,63 @@ function sentenceNextGroup(){
 }
 
 let stSessionGroup = [];
+let stLastMissedWords = []; // Cache of words that were missed in the previous run
 
-function startSentence(){
+function startSentence(isFocusMode = false){
   document.getElementById('sentenceResult').classList.remove('show');
   document.getElementById('sentence-group-complete').classList.remove('show');
   document.getElementById('sentenceGameArea').style.display='block';
   renderGrpBanner('sentence-group-banner','selectSentenceGroup');
-  stSessionGroup = [...getActiveGroup()];
-  const grp = stSessionGroup;
   
-  // Inherit accumulated error weight from Quiz & Typing
-  let initialPool = [];
-  grp.forEach(w => {
-    const wgt = getWordWeight(w.word);
-    for(let i=0; i<wgt; i++) initialPool.push(w);
-  });
-  
-  stQueue = shuffle(initialPool);
-  // Ensure every word is queued at least twice for the 2-hit rule
-  grp.forEach(w => {
-    if (stQueue.filter(x => x.word === w.word).length < 4) {
-      stQueue.push(w);
-      stQueue.push(w);
-    }
-  });
-  stQueue = shuffle(stQueue);
+  if (isFocusMode && stLastMissedWords.length > 0) {
+    const missedSet = new Set(stLastMissedWords);
+    // Grab 10 random helper words from the active library that are NOT in the missed list
+    const candidates = WORDS.filter(w => !missedSet.has(w.word));
+    const helpers = shuffle(candidates).slice(0, 10);
+    
+    // Combine them, putting missed ones as the main focus group
+    stSessionGroup = [...stLastMissedWords, ...helpers];
+    
+    let initialPool = [];
+    // Primary focus: Missed words get heavily queued (e.g. 3 copies)
+    stLastMissedWords.forEach(w => {
+      for(let i=0; i<3; i++) initialPool.push(w);
+    });
+    // Secondary focus: Auxiliary 10 words get 1 copy
+    helpers.forEach(w => {
+      initialPool.push(w);
+    });
+    
+    stQueue = shuffle(initialPool);
+    // Ensure missed words have at least 3 queued entries to satisfy target hits
+    stLastMissedWords.forEach(w => {
+      while (stQueue.filter(x => x.word === w.word).length < 3) {
+        stQueue.push(w);
+      }
+    });
+    stQueue = shuffle(stQueue);
+    showToast(`🔥 啟動重點強化測驗：${stLastMissedWords.length} 個未達標單字 + 10 個隨機單字`);
+  } else {
+    stSessionGroup = [...getActiveGroup()];
+    const grp = stSessionGroup;
+    
+    // Inherit accumulated error weight from Quiz & Typing
+    let initialPool = [];
+    grp.forEach(w => {
+      const wgt = getWordWeight(w.word);
+      for(let i=0; i<wgt; i++) initialPool.push(w);
+    });
+    
+    stQueue = shuffle(initialPool);
+    // Ensure every word is queued at least twice for the 2-hit rule
+    grp.forEach(w => {
+      if (stQueue.filter(x => x.word === w.word).length < 4) {
+        stQueue.push(w);
+        stQueue.push(w);
+      }
+    });
+    stQueue = shuffle(stQueue);
+  }
 
   stIdx=0; stCorrect=0; stTotal=stQueue.length; stErrMap={}; stCorrectCountMap={};
   renderSentence();
@@ -1933,15 +1968,28 @@ function showSentenceResult(){
   document.getElementById('sentenceResult').classList.add('show');
   
   const missed=document.getElementById('sentenceMissed');
+  const missedWords = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 3);
+  stLastMissedWords = missedWords;
+
   if (pass) {
     missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.9rem;color:var(--success);font-weight:700">
-      🏆 恭喜！本組 25 個單字已正式通過第四輪考驗，單字表已全數自動標記為「✓ 已懂」！
+      🏆 恭喜！本組單字已正式通過第四輪考驗，單字表已自動標記為「✓ 已懂」！
     </div>`;
     checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
+    document.getElementById('stRestartNormal').style.display = '';
+    document.getElementById('stRestartFocus').style.display = 'none';
   } else {
-    missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--accent2)">
-      未達到 90% 正確率或有單字未滿 2 次答對，請重新進行第四輪造句練習！
+    missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--accent2);line-height:1.6">
+      未達到 90% 正確率或有單字答對次數未滿 3 次。<br>
+      <strong>未達標單字 (${missedWords.length} 個)</strong> 將排入重點強化佇列，並隨機混入 10 個其他單字輔助複習。
     </div>`;
+    if (missedWords.length > 0) {
+      document.getElementById('stRestartNormal').style.display = '';
+      document.getElementById('stRestartFocus').style.display = '';
+    } else {
+      document.getElementById('stRestartNormal').style.display = '';
+      document.getElementById('stRestartFocus').style.display = 'none';
+    }
   }
 }
 
