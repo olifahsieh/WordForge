@@ -1926,32 +1926,7 @@ function stSkip(){
   stIdx++; renderSentence();
 }
 
-function showSentenceResult(){
-  document.getElementById('sentenceGameArea').style.display='none';
-  const grp=getActiveGroup();
-  const doneCnt=grp.filter(w=>getMastery(w.word)===2).length;
-  const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
-  document.getElementById('sentenceScore').textContent=pct+'%';
-  const errWords=Object.entries(stErrMap).filter(([,v])=>v>0);
-  document.getElementById('sentenceBreakdown').innerHTML=`
-    <div class="rb-box"><div class="rb-num" style="color:var(--success)">${stCorrect}</div><div class="rb-label">答對</div></div>
-    <div class="rb-box"><div class="rb-num" style="color:var(--danger)">${stTotal-stCorrect}</div><div class="rb-label">答錯</div></div>
-    <div class="rb-box"><div class="rb-num">${doneCnt}/${grp.length}</div><div class="rb-label">已懂</div></div>`;
-  const missed=document.getElementById('sentenceMissed');
-  missed.innerHTML=errWords.length
-    ? `<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">需加強</div>`
-      +errWords.map(([w,c])=>{
-        const wObj=WORDS.find(x=>x.word===w);
-        return `<div style="display:flex;justify-content:space-between;padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:3px;margin-bottom:5px;font-size:.82rem">
-          <span style="font-family:'Space Mono',monospace;color:var(--accent)">${escHtml(w)}</span>
-          <span style="color:var(--muted);flex:1;margin:0 10px">${wObj?escHtml(wObj.translation):''}</span>
-          <span style="font-family:'Space Mono',monospace;color:var(--accent2);font-size:.65rem">錯${c}次</span>
-        </div>`;
-      }).join('') : '';
-  document.getElementById('sentenceResult').classList.add('show');
-  if(isGroupDone(activeGrpIdx)) checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
-  renderGrpBanner('sentence-group-banner','selectSentenceGroup');
-}
+// Unified showSentenceResult is defined above.
 
 // ═══════════════════════════════════════
 //  SRS — 記憶曲線
