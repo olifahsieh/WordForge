@@ -1882,16 +1882,22 @@ function showSentenceResult(){
   const allHit3Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 3);
   const pass = pct >= 90 && allHit3Times;
 
-  if (pass && activeGrpIdx >= 0) {
-    const stats = getGroupStats(activeGrpIdx);
-    stats.r4Done = true;
-    stats.stage = 4;
-    saveGroupStats();
+  if (pass) {
+    if (activeGrpIdx >= 0) {
+      const stats = getGroupStats(activeGrpIdx);
+      stats.r4Done = true;
+      stats.stage = 4;
+      saveGroupStats();
+    }
     
-    // OFFICIALLY MARK ENTIRE GROUP WORDS AS "已懂" (LEVEL 2) IN MASTERY MAP & WORD TABLE
+    // OFFICIALLY MARK ENTIRE ACTIVE POOL WORDS AS "已懂" (LEVEL 2) IN MASTERY MAP & WORD TABLE
     grp.forEach(w => setMastery(w.word, 2));
     saveAll();
     updateHeader();
+    if (activeGrpIdx === -1) {
+      // If reviewing memory vault, trigger SRS list refresh to deduct marked items
+      if (typeof renderSRS === 'function') renderSRS();
+    }
   }
 
   document.getElementById('sentenceScore').textContent=pct+'%';
