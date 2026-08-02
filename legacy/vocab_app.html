@@ -1985,7 +1985,7 @@ function selectSRSGroup(idx){
 }
 
 function getDueWords(){
-  const today=todayStr();
+  const today = todayStr();
   let baseList;
   if (srsFilterMode === 'memory') {
     const all = getAllGlobalWords();
@@ -1997,11 +1997,32 @@ function getDueWords(){
     baseList = WORDS;
   }
 
-  return baseList.filter(w => {
+  // Filter candidate words due today or overdue
+  const candidates = baseList.filter(w => {
     const lvl = getMastery(w.word);
     if (lvl < 0) return (srsFilterMode !== 'memory');
     return !srsMap[w.word] || srsMap[w.word] <= today;
   });
+
+  if (srsFilterMode === 'memory') {
+    // Memory vault SRS daily refresh: no accumulation, max 45 words per day
+    let dailyCache = JSON.parse(localStorage.getItem('wf_srs_daily_cache') || '{}');
+    if (dailyCache.date !== today || !Array.isArray(dailyCache.words)) {
+      // Prioritize words: lower mastery level first (不熟 -> 稍懂), then by SRS due date
+      const sorted = [...candidates].sort((a, b) => {
+        const ma = getMastery(a.word), mb = getMastery(b.word);
+        if (ma !== mb) return ma - mb;
+        return (srsMap[a.word] || '').localeCompare(srsMap[b.word] || '');
+      });
+      const selectedWords = sorted.slice(0, 45).map(w => w.word);
+      dailyCache = { date: today, words: selectedWords };
+      localStorage.setItem('wf_srs_daily_cache', JSON.stringify(dailyCache));
+    }
+    const cachedSet = new Set(dailyCache.words);
+    return candidates.filter(w => cachedSet.has(w.word)).slice(0, 45);
+  }
+
+  return candidates.slice(0, 45);
 }
 
 function renderSRS(){
