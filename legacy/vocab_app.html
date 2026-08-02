@@ -437,6 +437,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
       <button class="qmode-btn"        id="qm-zh2en" onclick="setQuizMode('zh2en',this)">中→英</button>
       <button class="qmode-btn"        id="qm-listen" onclick="setQuizMode('listen',this)">🔊 聽音選字</button>
     </div>
+    <!-- progress bar for Quiz -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:0 24px">
+      <div id="q-counter" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);white-space:nowrap"></div>
+      <div style="flex:1;height:2px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div id="q-progress-bar" style="height:100%;background:var(--accent3);transition:width .3s;border-radius:2px;width:0%"></div>
+      </div>
+    </div>
     <div id="quizGameArea">
       <div class="quiz-question">
         <div class="quiz-type-label" id="q-type-label"></div>
@@ -971,8 +978,11 @@ function isGroupDone(idx){
   return g.length>0 && g.every(w=>getMastery(w.word)===2);
 }
 function getActiveGroup(){
-  if(activeGrpIdx===-1) return getDueWords();
-  return wordGroups[activeGrpIdx]||[];
+  const base = activeGrpIdx===-1 ? getDueWords() : (wordGroups[activeGrpIdx]||[]);
+  if (currentMode === 'quiz' || currentMode === 'typing' || currentMode === 'sentence') {
+    return base.filter(w => getMastery(w.word) !== 2);
+  }
+  return base;
 }
 function setActiveGrp(idx){
   activeGrpIdx=idx;
@@ -1423,6 +1433,11 @@ function renderQuiz(){
     }
   }
 
+  // Update Quiz progress bar
+  const quizPercent = quizQueue.length > 0 ? Math.min(100, Math.round((quizIdx / quizQueue.length) * 100)) : 0;
+  document.getElementById('q-counter').textContent = `進度 ${quizIdx + 1} / ${quizQueue.length}`;
+  document.getElementById('q-progress-bar').style.width = `${quizPercent}%`;
+
   const grid=document.getElementById('optionsGrid'); grid.innerHTML='';
   ['A','B','C','D'].forEach((ltr,i)=>{
     const btn=document.createElement('button'); btn.className='option-btn';
@@ -1454,13 +1469,13 @@ function answerQuiz(btn,chosen,correct){
   const fb=document.getElementById('quizFeedback');
   if(ok){ 
     quizCorrect++; streak++; 
-    fb.textContent='✓ 答對了！'; 
+    fb.innerHTML=`✓ 答對了！ <strong>${escHtml(correct.word)}</strong> : ${escHtml(correct.translation)}`; 
     fb.className='quiz-feedback ok'; 
     saveAll(); updateHeader();
-    setTimeout(() => { quizIdx++; renderQuiz(); }, 500);
+    setTimeout(() => { quizIdx++; renderQuiz(); }, 1200);
   } else { 
     streak=0; 
-    fb.textContent=`✕ 正確答案：${(quizMode==='zh2en')?correct.word:correct.translation}`; 
+    fb.innerHTML=`✕ 正確答案：<strong>${escHtml(correct.word)}</strong> : ${escHtml(correct.translation)}`; 
     fb.className='quiz-feedback fail'; 
     saveAll(); updateHeader();
     document.getElementById('nextBtn').disabled=false;
@@ -1595,8 +1610,11 @@ function renderTyping(){
   
   const completedWordsCount = grp.filter(g => (tyCorrectCountMap[g.word] || 0) >= 4).length;
   document.getElementById('ty-counter').textContent=
-    `第三輪拼字 (需各答對4次) ·  已達成 ${completedWordsCount}/${grp.length} 字  (本字已對 ${currentHits}/3 次)`;
-  document.getElementById('ty-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
+    `第三輪拼字 (需各答對4次) ·  已達成 ${completedWordsCount}/${grp.length} 字  (本字已對 ${currentHits}/4 次)`;
+  
+  // Calculate progress using current index divided by total session queue questions
+  const progressPercent = tyTotal > 0 ? Math.min(100, Math.round((tyIdx / tyTotal) * 100)) : 0;
+  document.getElementById('ty-progress-bar').style.width=`${progressPercent}%`;
   document.getElementById('ty-retry-badge').style.display=errN>0?'':'none';
 
   const inp=document.getElementById('typingInput');
@@ -1813,7 +1831,10 @@ function renderSentence(){
   const completedWordsCount = grp.filter(g => (stCorrectCountMap[g.word] || 0) >= 3).length;
   document.getElementById('st-counter').textContent =
     `第四輪造句 (終極解鎖：各答對3次) · 已達成 ${completedWordsCount}/${grp.length} 字 (本字已對 ${currentHits}/3 次)`;
-  document.getElementById('st-progress-bar').style.width=`${(completedWordsCount/grp.length)*100}%`;
+  
+  // Calculate progress using current index divided by total session queue questions
+  const progressPercent = stTotal > 0 ? Math.min(100, Math.round((stIdx / stTotal) * 100)) : 0;
+  document.getElementById('st-progress-bar').style.width=`${progressPercent}%`;
   document.getElementById('st-retry-badge').style.display=errN>0?'':'none';
 
   const inp=document.getElementById('sentenceInput');
