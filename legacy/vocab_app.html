@@ -2003,10 +2003,13 @@ function getDueWords(){
       localStorage.setItem('wf_srs_daily_cache', JSON.stringify(dailyCache));
     }
     
-    // Return all 45 cached words for today regardless of intermediate setMastery date updates
+    // Dynamically filter out words that have already been reviewed today (srsMap date is pushed to future)
     const allMap = new Map(getAllGlobalWords().map(w => [w.word.toLowerCase(), w]));
-    const cachedList = dailyCache.words.map(wStr => allMap.get(wStr.toLowerCase())).filter(Boolean);
-    return cachedList.length ? cachedList : baseList.slice(0, 45);
+    const cachedList = dailyCache.words
+      .map(wStr => allMap.get(wStr.toLowerCase()))
+      .filter(Boolean)
+      .filter(w => !srsMap[w.word] || srsMap[w.word] <= today);
+    return cachedList;
   }
 
   const grpIdx = activeGrpIdx >= 0 ? activeGrpIdx : 0;
