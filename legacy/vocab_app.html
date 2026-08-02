@@ -2102,11 +2102,13 @@ function renderSRS(){
   const l2=baseList.filter(w=>getMastery(w.word)===2).length;
   const unseen=baseList.filter(w=>getMastery(w.word)<0).length;
 
+  const totalGlobalMastered = getAllGlobalWords().filter(w => getMastery(w.word) === 2).length;
+
   document.getElementById('srsStats').innerHTML=`
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--accent)">${due.length}</div><div class="srs-stat-label">今日待複習</div></div>
-    <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl0)">${l0}</div><div class="srs-stat-label">不熟</div></div>
+    <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl2)">${l2}</div><div class="srs-stat-label">當前範圍已懂</div></div>
+    <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--success)">${totalGlobalMastered}</div><div class="srs-stat-label">累計總已懂</div></div>
     <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl1)">${l1}</div><div class="srs-stat-label">稍懂</div></div>
-    <div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--lvl2)">${l2}</div><div class="srs-stat-label">已懂</div></div>
     ${srsFilterMode !== 'memory' ? `<div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--muted)">${unseen}</div><div class="srs-stat-label">未接觸</div></div>` : `<div class="srs-stat-box"><div class="srs-stat-num" style="color:var(--muted)">${baseList.length}</div><div class="srs-stat-label">記憶總數</div></div>`}`;
   
   const btn=document.getElementById('srsStartBtn');
