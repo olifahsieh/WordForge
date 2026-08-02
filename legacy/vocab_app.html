@@ -384,11 +384,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   <div class="card-area">
     <!-- group banner -->
     <div id="fc-group-banner"></div>
-    <div class="group-complete" id="fc-group-complete">
-      <div class="group-complete-icon">🎉</div>
-      <div class="group-complete-title">第 <span id="fc-complete-gnum"></span> 組全部已懂！</div>
-      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
-      <button class="group-next-btn" id="fc-next-group-btn" onclick="fcNextGroup()">繼續下一組 →</button>
+    <div class="group-complete" id="fc-group-complete" style="padding:20px;background:rgba(71,255,176,.04);border:1px solid rgba(71,255,176,.2);border-radius:6px;margin-bottom:20px;display:none;text-align:center">
+      <div style="font-size:2rem;margin-bottom:4px">🏆</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--success);font-weight:700;margin-bottom:12px;letter-spacing:2px">第 <span id="fc-complete-gnum"></span> 組 通過</div>
+      <button class="group-next-btn" id="fc-next-group-btn" onclick="fcNextGroup()">下一組 →</button>
     </div>
 
     <div class="flashcard" id="flashcard" onclick="flipCard()">
@@ -427,11 +426,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
   <div class="quiz-area">
     <!-- group banner -->
     <div id="quiz-group-banner"></div>
-    <div class="group-complete" id="quiz-group-complete">
-      <div class="group-complete-icon">🎉</div>
-      <div class="group-complete-title">第 <span id="quiz-complete-gnum"></span> 組全部已懂！</div>
-      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
-      <button class="group-next-btn" id="quiz-next-group-btn" onclick="quizNextGroup()">繼續下一組 →</button>
+    <div class="group-complete" id="quiz-group-complete" style="padding:20px;background:rgba(71,255,176,.04);border:1px solid rgba(71,255,176,.2);border-radius:6px;margin-bottom:20px;display:none;text-align:center">
+      <div style="font-size:2rem;margin-bottom:4px">🏆</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--success);font-weight:700;margin-bottom:12px;letter-spacing:2px">第 <span id="quiz-complete-gnum"></span> 組 通過</div>
+      <button class="group-next-btn" id="quiz-next-group-btn" onclick="quizNextGroup()">下一組 →</button>
     </div>
     <div class="quiz-header-row">
       <span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:1px;">模式：</span>
@@ -484,11 +482,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 <div class="section" id="sec-typing">
   <div class="typing-area">
     <div id="typing-group-banner"></div>
-    <div class="group-complete" id="typing-group-complete">
-      <div class="group-complete-icon">🎉</div>
-      <div class="group-complete-title">第 <span id="typing-complete-gnum"></span> 組全部已懂！</div>
-      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
-      <button class="group-next-btn" id="typing-next-group-btn" onclick="typingNextGroup()">繼續下一組 →</button>
+    <div class="group-complete" id="typing-group-complete" style="padding:20px;background:rgba(71,255,176,.04);border:1px solid rgba(71,255,176,.2);border-radius:6px;margin-bottom:20px;display:none;text-align:center">
+      <div style="font-size:2rem;margin-bottom:4px">🏆</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--success);font-weight:700;margin-bottom:12px;letter-spacing:2px">第 <span id="typing-complete-gnum"></span> 組 通過</div>
+      <button class="group-next-btn" id="typing-next-group-btn" onclick="typingNextGroup()">下一組 →</button>
     </div>
     <div id="typingGameArea">
       <div class="typing-question">
@@ -538,11 +535,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 <div class="section" id="sec-sentence">
   <div class="typing-area">
     <div id="sentence-group-banner"></div>
-    <div class="group-complete" id="sentence-group-complete">
-      <div class="group-complete-icon">🎉</div>
-      <div class="group-complete-title">第 <span id="sentence-complete-gnum"></span> 組全部已懂！</div>
-      <div class="group-complete-sub">本組 25 個單字全部達到「已懂」！</div>
-      <button class="group-next-btn" id="sentence-next-group-btn" onclick="sentenceNextGroup()">繼續下一組 →</button>
+    <div class="group-complete" id="sentence-group-complete" style="padding:20px;background:rgba(71,255,176,.04);border:1px solid rgba(71,255,176,.2);border-radius:6px;margin-bottom:20px;display:none;text-align:center">
+      <div style="font-size:2rem;margin-bottom:4px">🏆</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.1rem;color:var(--success);font-weight:700;margin-bottom:12px;letter-spacing:2px">第 <span id="sentence-complete-gnum"></span> 組 通過</div>
+      <button class="group-next-btn" id="sentence-next-group-btn" onclick="sentenceNextGroup()">下一組 →</button>
     </div>
     <div id="sentenceGameArea">
       <div class="typing-question">
