@@ -1713,12 +1713,15 @@ function sentenceNextGroup(){
   if(activeGrpIdx<wordGroups.length-1){ selectGlobalGroup(activeGrpIdx+1); }
 }
 
+let stSessionGroup = [];
+
 function startSentence(){
   document.getElementById('sentenceResult').classList.remove('show');
   document.getElementById('sentence-group-complete').classList.remove('show');
   document.getElementById('sentenceGameArea').style.display='block';
   renderGrpBanner('sentence-group-banner','selectSentenceGroup');
-  const grp=getActiveGroup();
+  stSessionGroup = [...getActiveGroup()];
+  const grp = stSessionGroup;
   
   // Inherit accumulated error weight from Quiz & Typing
   let initialPool = [];
@@ -1748,7 +1751,7 @@ function renderSentence(){
   document.getElementById('stWrongMsg').textContent='';
   document.getElementById('stShowBtn').disabled=false;
 
-  const grp = getActiveGroup();
+  const grp = stSessionGroup;
   
   // Skip words in queue that already reached 2 correct hits
   while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= 3) {
@@ -1877,7 +1880,7 @@ function stSkip(){
 
 function showSentenceResult(){
   document.getElementById('sentenceGameArea').style.display='none';
-  const grp=getActiveGroup();
+  const grp = stSessionGroup;
   const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
   const allHit3Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 3);
   const pass = pct >= 90 && allHit3Times;
