@@ -1780,6 +1780,13 @@ function startSentence(isFocusMode = false){
       }
     });
     stQueue = shuffle(stQueue);
+    // Ensure helper words are queued at least once so they appear in the test
+    helpers.forEach(w => {
+      if (stQueue.filter(x => x.word === w.word).length < 1) {
+        stQueue.push(w);
+      }
+    });
+    stQueue = shuffle(stQueue);
     showToast(`🔥 啟動重點強化測驗：${stLastMissedWords.length} 個未達標單字 + 10 個隨機單字`);
   } else {
     stSessionGroup = [...getActiveGroup()];
@@ -1793,10 +1800,9 @@ function startSentence(isFocusMode = false){
     });
     
     stQueue = shuffle(initialPool);
-    // Ensure every word is queued at least twice for the 2-hit rule
+    // Ensure every word is queued at least 3 times to satisfy the 3-hit target rule
     grp.forEach(w => {
-      if (stQueue.filter(x => x.word === w.word).length < 4) {
-        stQueue.push(w);
+      while (stQueue.filter(x => x.word === w.word).length < 3) {
         stQueue.push(w);
       }
     });
@@ -1816,18 +1822,28 @@ function renderSentence(){
 
   const grp = stSessionGroup;
   
-  // Skip words in queue that already reached 2 correct hits
-  while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= 3) {
+  const getTargetHits = (wrd) => {
+    // If we have a cached missed list and the word is NOT in it, it is a helper word (needs 1 hit)
+    if (stLastMissedWords.length > 0 && !stLastMissedWords.some(x => x.word === wrd)) {
+      return 1;
+    }
+    return 3; // Missed words and all normal mode words need 3 hits
+  };
+
+  // Skip words in queue that already reached their respective correct hits target
+  while (stIdx < stQueue.length && (stCorrectCountMap[stQueue[stIdx].word] || 0) >= getTargetHits(stQueue[stIdx].word)) {
     stIdx++;
   }
 
-  const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 3);
+  const uncompleted = grp.filter(w => (stCorrectCountMap[w.word] || 0) < getTargetHits(w.word));
 
   if(stIdx >= stQueue.length && uncompleted.length > 0) {
     let refreshPool = [];
     uncompleted.forEach(w => {
-      refreshPool.push(w);
-      refreshPool.push(w);
+      const needed = getTargetHits(w.word) - (stCorrectCountMap[w.word] || 0);
+      for(let i=0; i < Math.max(1, needed); i++) {
+        refreshPool.push(w);
+      }
     });
     stQueue = shuffle(refreshPool);
     stIdx = 0;
@@ -1948,8 +1964,14 @@ function showSentenceResult(){
   document.getElementById('sentenceGameArea').style.display='none';
   const grp = stSessionGroup;
   const pct=stTotal>0?Math.round(stCorrect/stTotal*100):0;
-  const allHit3Times = grp.every(w => (stCorrectCountMap[w.word] || 0) >= 3);
-  const pass = pct >= 90 && allHit3Times;
+  const getTargetHits = (wrd) => {
+    if (stLastMissedWords.length > 0 && !stLastMissedWords.some(x => x.word === wrd)) {
+      return 1;
+    }
+    return 3;
+  };
+  const allHitRequiredTimes = grp.every(w => (stCorrectCountMap[w.word] || 0) >= getTargetHits(w.word));
+  const pass = pct >= 90 && allHitRequiredTimes;
 
   if (pass) {
     if (activeGrpIdx >= 0) {
@@ -1960,11 +1982,12 @@ function showSentenceResult(){
     }
     
     // OFFICIALLY MARK ENTIRE ACTIVE POOL WORDS AS "已懂" (LEVEL 2) IN MASTERY MAP & WORD TABLE
-    grp.forEach(w => setMastery(w.word, 2));
+    // In focus mode, only mark the originally missed words as Mastered
+    const wordsToMark = stLastMissedWords.length > 0 ? stLastMissedWords : grp;
+    wordsToMark.forEach(w => setMastery(w.word, 2));
     saveAll();
     updateHeader();
     if (activeGrpIdx === -1) {
-      // If reviewing memory vault, trigger SRS list refresh to deduct marked items
       if (typeof renderSRS === 'function') renderSRS();
     }
   }
@@ -1978,8 +2001,7 @@ function showSentenceResult(){
   document.getElementById('sentenceResult').classList.add('show');
   
   const missed=document.getElementById('sentenceMissed');
-  const missedWords = grp.filter(w => (stCorrectCountMap[w.word] || 0) < 3);
-  stLastMissedWords = missedWords;
+  const missedWords = grp.filter(w => (stCorrectCountMap[w.word] || 0) < getTargetHits(w.word));
 
   if (pass) {
     missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.9rem;color:var(--success);font-weight:700">
@@ -1988,11 +2010,13 @@ function showSentenceResult(){
     checkShowGroupDone('sentence-group-complete','sentence-complete-gnum','sentence-next-group-btn');
     document.getElementById('stRestartNormal').style.display = '';
     document.getElementById('stRestartFocus').style.display = 'none';
+    stLastMissedWords = []; // Clear missed list on pass
   } else {
     missed.innerHTML = `<div style="margin-top:15px;font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--accent2);line-height:1.6">
-      未達到 90% 正確率或有單字答對次數未滿 3 次。<br>
+      未達到 90% 正確率或有單字未達標。<br>
       <strong>未達標單字 (${missedWords.length} 個)</strong> 將排入重點強化佇列，並隨機混入 10 個其他單字輔助複習。
     </div>`;
+    stLastMissedWords = missedWords;
     if (missedWords.length > 0) {
       document.getElementById('stRestartNormal').style.display = '';
       document.getElementById('stRestartFocus').style.display = '';
