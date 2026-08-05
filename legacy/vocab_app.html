@@ -960,6 +960,25 @@ function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function getTodayDate(){ const d=new Date(); return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
+function isBogusExample(ex) {
+  if (!ex) return true;
+  const en = typeof ex === 'string' ? ex.toLowerCase() : (ex.en || '').toLowerCase();
+  const zh = (ex.zh || '').toLowerCase();
+  if (!en && !zh) return true;
+  const cannedEn = [
+    'crucial for academic success', 'researchers investigate how to', 'impact on results',
+    'in academic contexts', 'in modern research', 'across all samples', 'the target word is:'
+  ];
+  const cannedZh = [
+    '對於學術成功至關重要', '研究人員調查如何有效進行', '對結果產生的', '相關的例句'
+  ];
+  return cannedEn.some(k => en.includes(k)) || cannedZh.some(k => zh.includes(k));
+}
+function getValidExamples(w) {
+  if (!w || !w.examples || !Array.isArray(w.examples)) return [];
+  return w.examples.filter(ex => ex && (ex.en || ex.zh) && !isBogusExample(ex));
+}
+
 // ═══════════════════════════════════════
 //  GROUP SYSTEM  (25 words per group)
 //  Groups are randomly ordered once and stored.
@@ -1252,11 +1271,12 @@ function showFCCard(){
   const exEnEl = document.getElementById('fc-example-en');
   const exZhEl = document.getElementById('fc-example-zh');
 
-  if (c.examples && Array.isArray(c.examples) && c.examples.length && c.examples[0].en) {
-    exEnEl.textContent = `“${c.examples[0].en}”`;
+  const validEx = getValidExamples(c);
+  if (validEx.length && validEx[0].en) {
+    exEnEl.textContent = `“${validEx[0].en}”`;
     exEnEl.style.display = 'block';
-    if (c.examples[0].zh) {
-      exZhEl.textContent = `↳ ${c.examples[0].zh}`;
+    if (validEx[0].zh) {
+      exZhEl.textContent = `↳ ${validEx[0].zh}`;
       exZhEl.style.display = 'block';
     } else {
       exZhEl.style.display = 'none';
@@ -1859,9 +1879,10 @@ function renderSentence(){
   let sentenceEn = "";
   let sentenceZh = "";
 
-  if (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) {
-    sentenceEn = w.examples[0].en;
-    sentenceZh = w.examples[0].zh ? `↳ ${w.examples[0].zh}` : '';
+  const validEx = getValidExamples(w);
+  if (validEx.length && validEx[0].en) {
+    sentenceEn = validEx[0].en;
+    sentenceZh = validEx[0].zh ? `↳ ${validEx[0].zh}` : '';
   }
 
   const cleanTr = w.translation ? w.translation.replace(/^(n|v|adj|adv)\.\s*/i, '').split(/[；;,]/)[0] : '';
@@ -1881,8 +1902,8 @@ function renderSentence(){
     document.getElementById('st-sentence-zh').innerHTML = htmlZh;
     document.getElementById('st-sentence-zh').style.display = sentenceZh ? 'block' : 'none';
   } else {
-    document.getElementById('st-sentence-en').textContent = `“The target word is: ______ (${w.translation})”`;
-    document.getElementById('st-sentence-zh').innerHTML = `↳ ${w.translation}`;
+    document.getElementById('st-sentence-en').textContent = `【單字概念與解析】請依下方釋義填入正確單字：______`;
+    document.getElementById('st-sentence-zh').innerHTML = `📖 <strong style="color:var(--accent3);font-weight:700">中文釋義與詞性解析</strong>：${w.translation || '（請依當期練習記憶完成填寫）'}`;
     document.getElementById('st-sentence-zh').style.display = 'block';
   }
 
@@ -2292,12 +2313,17 @@ async function openWordModal(wordStr) {
 
   // 1. Examples
   const rawEx = (data && data.examples && data.examples.length) ? data.examples : (localItem?.examples || []);
-  const exHtml = rawEx.map(ex => `
+  const validEx = rawEx.filter(ex => ex && (ex.en || ex.zh) && !isBogusExample(ex));
+  const exHtml = validEx.length ? validEx.map(ex => `
     <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
       <div style="font-size:.88rem;color:var(--text);font-style:italic">“${escHtml(ex.en)}”</div>
       ${ex.zh ? `<div style="font-size:.85rem;color:var(--accent);margin-top:4px;font-weight:700">↳ ${escHtml(ex.zh)}</div>` : ''}
     </div>
-  `).join('');
+  `).join('') : `
+    <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);color:var(--text2);font-size:.85rem">
+      （暫無官方字典例句，請直接參考下方完整單字釋義與詞性解析）
+    </div>
+  `;
 
   // 2. Definitions (Guaranteed Fallback!)
   let rawDefs = (data && data.definitions && data.definitions.length) ? data.definitions : [];
@@ -2784,7 +2810,7 @@ async function callDictAPI(word) {
       if (item.ex && item.ex.trim()) {
         const wordsCount = item.ex.trim().split(/\s+/).length;
         const charLen = item.ex.trim().length;
-        if (wordsCount >= 4 && wordsCount <= 25 && charLen <= 150) {
+        if (wordsCount >= 2 && charLen <= 300) {
           rawExamples.push({ en: item.ex.trim(), zh: '' });
         }
       }
@@ -2799,7 +2825,7 @@ async function callDictAPI(word) {
             const cleanEn = item[0].replace(/<[^>]+>/g, '').trim();
             const wordsCount = cleanEn.split(/\s+/).length;
             const charLen = cleanEn.length;
-            if (wordsCount >= 4 && wordsCount <= 25 && charLen <= 150 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
+            if (wordsCount >= 2 && charLen <= 300 && !rawExamples.some(x=>x.en.toLowerCase()===cleanEn.toLowerCase())) {
               const formattedEn = cleanEn.charAt(0).toUpperCase() + cleanEn.slice(1);
               rawExamples.push({ en: formattedEn, zh: '' });
               if (rawExamples.length >= 2) break;
@@ -2820,20 +2846,6 @@ async function callDictAPI(word) {
         exObj.zh = `與「${zhWordTr}」相關的例句`;
       }
     }
-  }
-
-  if (rawExamples.length === 0) {
-    let genEn = `Understanding the ${word.trim()} is crucial for academic success.`;
-    let genZh = `理解 ${word.trim()}（${zhWordTr}）對於學術成功至關重要。`;
-    const primaryPos = Object.keys(gtDictMap)[0] || (definitions[0] && definitions[0].pos) || '';
-    if (primaryPos.includes('verb')) {
-      genEn = `Researchers investigate how to ${word.trim()} effective strategy.`;
-      genZh = `研究人員調查如何有效進行${zhWordTr}。`;
-    } else if (primaryPos.includes('adjective')) {
-      genEn = `The finding demonstrates a ${word.trim()} impact on results.`;
-      genZh = `研究結果展示了對結果產生的${zhWordTr}影響。`;
-    }
-    rawExamples.push({ en: genEn, zh: genZh });
   }
 
   // Collect words / terms from example translations to prioritize context-aligned meanings
@@ -3235,10 +3247,8 @@ let updSelected = new Set();  // word strings selected in manual mode
 function isIncomplete(w){
   const tr = (w.translation||'').trim();
   const ph = (w.phonetic||'').trim();
-  const firstEx = (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].en) ? w.examples[0].en.trim() : '';
-  const firstExZh = (w.examples && Array.isArray(w.examples) && w.examples.length && w.examples[0].zh) ? w.examples[0].zh.trim() : '';
-  const isCanned = firstEx.includes('in academic contexts') || firstEx.includes('in modern research') || firstEx.includes('across all samples');
-  const hasValidEx = firstEx && (firstEx.split(/\s+/).length >= 4) && firstExZh && !isCanned;
+  const validEx = getValidExamples(w);
+  const hasValidEx = validEx && validEx.length > 0 && validEx[0].en && validEx[0].zh;
   return ph==='--' || ph==='' || tr.startsWith('web.') || tr.length<5 || !hasValidEx;
 }
 
