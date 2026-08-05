@@ -2090,12 +2090,12 @@ function getDueWords(){
       localStorage.setItem('wf_srs_daily_cache', JSON.stringify(dailyCache));
     }
     
-    // Dynamically filter out words that have already been reviewed today (srsMap date is pushed to future)
+    // Dynamically filter out words that have already been marked as Mastered (Level 2)
     const allMap = new Map(getAllGlobalWords().map(w => [w.word.toLowerCase(), w]));
     const cachedList = dailyCache.words
       .map(wStr => allMap.get(wStr.toLowerCase()))
       .filter(Boolean)
-      .filter(w => !srsMap[w.word] || srsMap[w.word] <= today);
+      .filter(w => getMastery(w.word) !== 2);
     return cachedList;
   }
 
