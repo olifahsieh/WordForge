@@ -395,7 +395,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
         <div class="card-face card-front">
           <div class="card-word" id="fc-word"></div>
           <div class="card-phonetic" id="fc-phonetic"></div>
-          <button class="speak-btn" id="fc-speak" onclick="event.stopPropagation();speakCurrent()">▶ 發音</button>
+          <button class="speak-btn" id="fc-speak" onclick="event.stopPropagation();speakCurrent()">▶ 單字發音</button>
           <div class="card-example-front" id="fc-example-en" style="margin-top:14px;font-size:.85rem;color:var(--text);padding:8px 12px;background:rgba(255,255,255,.05);border-radius:6px;border:1px dashed var(--border);width:90%;text-align:center;font-style:italic"></div>
           <div class="card-hint" style="margin-top:10px">點擊翻面</div>
         </div>
@@ -403,7 +403,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
           <div class="card-word-back" id="fc-word-back"></div>
           <div class="card-translation" id="fc-translation"></div>
           <div class="card-example-back" id="fc-example-zh" style="margin-top:12px;font-size:.85rem;color:var(--accent);padding:8px 12px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid var(--border);width:90%;text-align:center;font-weight:700"></div>
-          <button class="speak-btn" style="margin-top:12px" onclick="event.stopPropagation();speakCurrent()">▶ 再聽一次</button>
+          <button class="speak-btn" style="margin-top:12px" onclick="event.stopPropagation();speakCurrent()">▶ 聽單字發音</button>
         </div>
       </div>
     </div>
@@ -1223,6 +1223,49 @@ function speakCurrent(rate = 0.9) {
   if (_currentWord) speak(_currentWord, rate);
 }
 
+function speakSentence(text, rate = 0.9) {
+  if (!text || !text.trim()) return;
+  const cleanText = text.replace(/[“”;]/g, '').trim();
+  
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
+  const encoded = encodeURIComponent(cleanText);
+  const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encoded}&type=2`;
+  
+  let playedAudio = false;
+  const audio = new Audio(audioUrl);
+  currentAudio = audio;
+
+  audio.play().then(() => {
+    playedAudio = true;
+  }).catch(() => {
+    speakWithTTS(cleanText, rate);
+  });
+
+  const fallbackTimer = setTimeout(() => {
+    if (!playedAudio && currentAudio === audio) {
+      audio.pause();
+      currentAudio = null;
+      speakWithTTS(cleanText, rate);
+    }
+  }, 1200);
+
+  audio.onended = () => {
+    clearTimeout(fallbackTimer);
+    currentAudio = null;
+  };
+  audio.onerror = () => {
+    clearTimeout(fallbackTimer);
+    speakWithTTS(cleanText, rate);
+  };
+}
+
 // ═══════════════════════════════════════
 //  FLASHCARD — GROUP-BASED (25 words per group)
 // ═══════════════════════════════════════
@@ -1273,10 +1316,12 @@ function showFCCard(){
 
   const validEx = getValidExamples(c);
   if (validEx.length && validEx[0].en) {
-    exEnEl.textContent = `“${validEx[0].en}”`;
+    const exEn = escHtml(validEx[0].en);
+    exEnEl.innerHTML = `<div>“${exEn}”</div><button class="speak-btn" style="margin-top:8px;padding:4px 12px;font-style:normal;border-color:rgba(71,200,255,0.4)" onclick="event.stopPropagation();speakSentence(this.dataset.text)" data-text="${exEn}">🔊 聽例句</button>`;
     exEnEl.style.display = 'block';
     if (validEx[0].zh) {
-      exZhEl.textContent = `↳ ${validEx[0].zh}`;
+      const exZh = escHtml(validEx[0].zh);
+      exZhEl.innerHTML = `<div style="color:var(--text);font-style:italic;font-weight:400;margin-bottom:6px">“${exEn}”</div><div style="color:var(--accent)">↳ ${exZh}</div><button class="speak-btn" style="margin-top:8px;padding:4px 12px;font-style:normal;color:var(--accent);border-color:rgba(71,255,176,0.4)" onclick="event.stopPropagation();speakSentence(this.dataset.text)" data-text="${exEn}">🔊 聽例句</button>`;
       exZhEl.style.display = 'block';
     } else {
       exZhEl.style.display = 'none';
@@ -2318,6 +2363,7 @@ async function openWordModal(wordStr) {
     <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
       <div style="font-size:.88rem;color:var(--text);font-style:italic">“${escHtml(ex.en)}”</div>
       ${ex.zh ? `<div style="font-size:.85rem;color:var(--accent);margin-top:4px;font-weight:700">↳ ${escHtml(ex.zh)}</div>` : ''}
+      <button class="speak-btn" style="margin-top:8px;padding:4px 12px;font-style:normal;font-size:0.75rem" onclick="event.stopPropagation();speakSentence(this.dataset.text)" data-text="${escHtml(ex.en)}">🔊 聽例句</button>
     </div>
   `).join('') : `
     <div style="margin-top:8px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);color:var(--text2);font-size:.85rem">
