@@ -2554,7 +2554,7 @@ async function addWordFromModal(wordStr) {
     const entry = {
       word: data.word,
       phonetic: data.phonetic || '--',
-      translation: data.translation_compact,
+      translation: customTranslationsMap[data.word.toLowerCase()] || data.translation_compact,
       examples: data.examples || [],
       date: getTodayDate(),
     };
@@ -3306,10 +3306,12 @@ async function runBatch(){
       const data = await callDictAPI(w);
       if(data.error){ addBatchItem(w,'','⚠ 找不到'); skip++; continue; }
       const exists = WORDS.find(x=>x.word.toLowerCase()===data.word.toLowerCase());
-      if(exists){ addBatchItem(data.word, data.translation_compact||'', '已存在'); skip++; continue; }
-      WORDS.push({ word:data.word, phonetic:data.phonetic||'--', translation:data.translation_compact||'', examples:data.examples||[], date:getTodayDate() });
+      const customTr = customTranslationsMap[data.word.toLowerCase()];
+      const finalTr = customTr || data.translation_compact || '';
+      if(exists){ addBatchItem(data.word, finalTr, '已存在'); skip++; continue; }
+      WORDS.push({ word:data.word, phonetic:data.phonetic||'--', translation:finalTr, examples:data.examples||[], date:getTodayDate() });
       ok++;
-      addBatchItem(data.word, data.translation_compact||'', '✓ 已加入');
+      addBatchItem(data.word, finalTr, '✓ 已加入');
     } catch(e){
       addBatchItem(w,'','✕ 查詢失敗'); skip++;
     }
@@ -3519,7 +3521,7 @@ async function runUpdate(){
 
       const updated = updateWordGlobally(w.word, data);
       if(updated){
-        addUpdItem(w.word, data.translation_compact || w.translation, '✓ 已更新');
+        addUpdItem(w.word, w.translation || data.translation_compact, '✓ 已更新');
         ok++;
       } else {
         addUpdItem(w.word, w.translation, '⚠ 找不到相符單字'); fail++;
