@@ -830,6 +830,27 @@ let streak = parseInt(localStorage.getItem('wf_streak')||'0');
 let customTranslationsMap = JSON.parse(localStorage.getItem('wf_custom_tr')||'{}');
 const SRS_DAYS = [1,3,7];
 
+function applyCustomTranslationsGlobally() {
+  const apply = (w) => {
+    if (!w || !w.word) return;
+    const cTr = customTranslationsMap[w.word.toLowerCase()];
+    if (cTr) w.translation = cTr;
+  };
+  if (typeof WORDS !== 'undefined' && Array.isArray(WORDS)) WORDS.forEach(apply);
+  if (typeof datasets !== 'undefined' && Array.isArray(datasets)) {
+    datasets.forEach(ds => (ds.words || []).forEach(apply));
+  }
+  if (window.IELTS_DATASETS && Array.isArray(window.IELTS_DATASETS)) {
+    window.IELTS_DATASETS.forEach(ds => (ds.words || []).forEach(apply));
+  }
+  if (typeof wordGroups !== 'undefined' && Array.isArray(wordGroups)) {
+    wordGroups.forEach(grp => (grp || []).forEach(apply));
+  }
+  if (typeof fcDeck !== 'undefined' && Array.isArray(fcDeck)) {
+    fcDeck.forEach(apply);
+  }
+}
+
 function saveAll(){
   localStorage.setItem('wf_mastery',   JSON.stringify(masteryMap));
   localStorage.setItem('wf_srs',       JSON.stringify(srsMap));
@@ -1098,6 +1119,7 @@ let _currentWord='';
 let currentMode='flashcard';
 function switchMode(m,btn){
   currentMode=m;
+  if (typeof applyCustomTranslationsGlobally === 'function') applyCustomTranslationsGlobally();
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   const secEl = document.getElementById('sec-'+m);
@@ -3217,6 +3239,9 @@ function confirmAddWord(){
     if (entry.examples && entry.examples.length) exists.examples = entry.examples;
     updateWordGlobally(entry.word, { phonetic: entry.phonetic, translation_compact: entry.translation, examples: entry.examples });
     saveWordsToActive();
+    localStorage.removeItem('wf_group_order');
+    buildGroups();
+    applyCustomTranslationsGlobally();
     saveAll();
     updateHeader();
     showToast(`✓ 已將「${entry.word}」的翻譯覆蓋更新為您的修改！`);

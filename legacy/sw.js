@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wordforge-v1';
+const CACHE_NAME = 'wordforge-v3';
 const ASSETS = [
   './vocab_app.html',
   './icon-192.png',
