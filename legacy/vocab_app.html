@@ -827,6 +827,7 @@ let reviewHistory = JSON.parse(localStorage.getItem('wf_history')||'{}');
 let datasets      = JSON.parse(localStorage.getItem('wf_datasets')||'[]');
 let activeDatasetId = localStorage.getItem('wf_active_dataset')||'builtin';
 let streak = parseInt(localStorage.getItem('wf_streak')||'0');
+let customTranslationsMap = JSON.parse(localStorage.getItem('wf_custom_tr')||'{}');
 const SRS_DAYS = [1,3,7];
 
 function saveAll(){
@@ -837,6 +838,7 @@ function saveAll(){
   localStorage.setItem('wf_active_dataset', activeDatasetId);
   localStorage.setItem('wf_active_group',   activeGrpIdx);
   localStorage.setItem('wf_streak',    streak);
+  localStorage.setItem('wf_custom_tr', JSON.stringify(customTranslationsMap));
 
   if (window.fbUser && window.fbDb && window.fbSetDoc && window.fbDoc) {
     try {
@@ -846,6 +848,7 @@ function saveAll(){
         srsMap,
         reviewHistory,
         datasets,
+        customTranslationsMap,
         activeDatasetId,
         activeGrpIdx,
         streak,
@@ -899,6 +902,7 @@ window.loadFromCloud = async function() {
       if (data.masteryMap) masteryMap = data.masteryMap;
       if (data.srsMap) srsMap = data.srsMap;
       if (data.reviewHistory) reviewHistory = data.reviewHistory;
+      if (data.customTranslationsMap) customTranslationsMap = data.customTranslationsMap;
       
       // Merge remote datasets with local datasets so custom datasets are never lost
       if (Array.isArray(data.datasets) && data.datasets.length > 0) {
@@ -2107,17 +2111,22 @@ let srsFilterMode = 'memory';
 
 function getAllGlobalWords() {
   const map = new Map();
+  const applyCustom = (w) => {
+    const cTr = customTranslationsMap[w.word.toLowerCase()];
+    if (cTr) w.translation = cTr;
+    return w;
+  };
   if (window.IELTS_DATASETS && Array.isArray(window.IELTS_DATASETS)) {
     window.IELTS_DATASETS.forEach(ds => {
-      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), w));
+      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), applyCustom(w)));
     });
   }
   if (datasets && Array.isArray(datasets)) {
     datasets.forEach(ds => {
-      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), w));
+      if (ds.words) ds.words.forEach(w => map.set(w.word.toLowerCase(), applyCustom(w)));
     });
   }
-  WORDS.forEach(w => map.set(w.word.toLowerCase(), w));
+  WORDS.forEach(w => map.set(w.word.toLowerCase(), applyCustom(w)));
   return Array.from(map.values());
 }
 
@@ -2354,7 +2363,8 @@ async function openWordModal(wordStr) {
 
   const headword = (data && data.word) || wordStr;
   const phonetic = (data && data.phonetic && data.phonetic !== '--') ? data.phonetic : (localItem?.phonetic || `/${wordStr}/`);
-  const translation = (data && data.translation_compact) || (localItem?.translation) || (data && data.zhWordTr) || '--';
+  const customTr = customTranslationsMap[headword.toLowerCase()];
+  const translation = customTr || (data && data.translation_compact) || (localItem?.translation) || (data && data.zhWordTr) || '--';
 
   // 1. Examples
   const rawEx = (data && data.examples && data.examples.length) ? data.examples : (localItem?.examples || []);
@@ -2639,7 +2649,11 @@ function previewDataset(id){
 
   // Temporarily update WORDS for preview in word table list without setting activeDatasetId or switching modes
   WORDS.length = 0;
-  (ds.words || []).forEach(w => WORDS.push(w));
+  (ds.words || []).forEach(w => {
+    const customTr = customTranslationsMap[w.word.toLowerCase()];
+    if (customTr) w.translation = customTr;
+    WORDS.push(w);
+  });
   filterList();
   showToast(`👀 預覽中：「${ds.name}」（點擊「載入」確定切換）`);
 }
@@ -2659,7 +2673,11 @@ function loadDataset(id){
   if (!ds) return;
 
   WORDS.length = 0;
-  (ds.words || []).forEach(w => WORDS.push(w));
+  (ds.words || []).forEach(w => {
+    const customTr = customTranslationsMap[w.word.toLowerCase()];
+    if (customTr) w.translation = customTr;
+    WORDS.push(w);
+  });
   activeDatasetId = ds.id;
   localStorage.setItem('wf_active_dataset', activeDatasetId);
 
@@ -3027,7 +3045,9 @@ function renderLookupResult(data){
   const lrPhonetic = document.getElementById('lr-phonetic');
   if (lrPhonetic) lrPhonetic.textContent = data.phonetic||'';
   const lrDirectTr = document.getElementById('lr-direct-tr');
-  const primaryTr = data.translation_compact || data.zhWordTr || '';
+  const targetWordLower = (data.word || '').toLowerCase();
+  const customTr = customTranslationsMap[targetWordLower];
+  const primaryTr = customTr || data.translation_compact || data.zhWordTr || '';
   if (lrDirectTr) lrDirectTr.textContent = primaryTr;
 
   // Examples
@@ -3158,9 +3178,9 @@ function renderLookupResult(data){
   const today = getTodayDate();
   document.getElementById('pr-word').textContent = data.word;
   document.getElementById('pr-phonetic').textContent = data.phonetic||'--';
-  document.getElementById('pr-translation').textContent = data.translation_compact||'';
+  document.getElementById('pr-translation').textContent = primaryTr;
   document.getElementById('pr-date').textContent = today;
-  document.getElementById('editTranslationInput').value = data.translation_compact||'';
+  document.getElementById('editTranslationInput').value = primaryTr;
 
   document.getElementById('lookupResult').classList.add('show');
 }
@@ -3173,9 +3193,8 @@ function toggleEditTranslation(){
 
 function confirmAddWord(){
   if(!pendingLookupData) return;
-  const translation = document.getElementById('editTranslationWrap').classList.contains('show')
-    ? document.getElementById('editTranslationInput').value.trim() || pendingLookupData.translation_compact
-    : pendingLookupData.translation_compact;
+  const inputTr = document.getElementById('editTranslationInput').value.trim();
+  const translation = inputTr || pendingLookupData.translation_compact || pendingLookupData.zhWordTr || '--';
 
   const entry = {
     word:        pendingLookupData.word,
@@ -3185,10 +3204,28 @@ function confirmAddWord(){
     date:        getTodayDate()
   };
 
+  const wLower = entry.word.toLowerCase();
+  customTranslationsMap[wLower] = entry.translation;
+  localStorage.setItem('wf_custom_tr', JSON.stringify(customTranslationsMap));
+
   // Check duplicate
-  const exists = WORDS.find(w=>w.word.toLowerCase()===entry.word.toLowerCase());
+  const exists = WORDS.find(w=>w.word.toLowerCase()===wLower);
   if(exists){
-    showToast(`「${entry.word}」已在單字庫中`);
+    ensureEditableDataset('修改單字翻譯');
+    exists.translation = entry.translation;
+    if (entry.phonetic !== '--') exists.phonetic = entry.phonetic;
+    if (entry.examples && entry.examples.length) exists.examples = entry.examples;
+    updateWordGlobally(entry.word, { phonetic: entry.phonetic, translation_compact: entry.translation, examples: entry.examples });
+    saveWordsToActive();
+    saveAll();
+    updateHeader();
+    showToast(`✓ 已將「${entry.word}」的翻譯覆蓋更新為您的修改！`);
+    const list = document.getElementById('addedList');
+    list.innerHTML = `<div class="added-item">
+      <span class="added-item-word">${escHtml(entry.word)}</span>
+      <span class="added-item-tr">${escHtml(entry.translation)}</span>
+      <span class="added-item-status" style="color:var(--accent3)">✏️ 已覆蓋更新</span>
+    </div>` + list.innerHTML;
   } else {
     ensureEditableDataset('新增單字');
     WORDS.push(entry);
@@ -3381,13 +3418,15 @@ function updSelectAll(selectAll){
 
 function updateWordGlobally(wordStr, data) {
   const targetLower = wordStr.toLowerCase();
+  const customTr = customTranslationsMap[targetLower];
+  const trToUse = customTr || data.translation_compact;
   let updatedAny = false;
 
   // 1. Update in active WORDS array
   const idx = WORDS.findIndex(x => x.word.toLowerCase() === targetLower);
   if (idx >= 0) {
     WORDS[idx].phonetic = data.phonetic || WORDS[idx].phonetic;
-    WORDS[idx].translation = data.translation_compact || WORDS[idx].translation;
+    WORDS[idx].translation = trToUse || WORDS[idx].translation;
     if (data.examples && data.examples.length) {
       WORDS[idx].examples = data.examples;
     }
@@ -3401,7 +3440,7 @@ function updateWordGlobally(wordStr, data) {
         const dsIdx = ds.words.findIndex(x => x.word.toLowerCase() === targetLower);
         if (dsIdx >= 0) {
           ds.words[dsIdx].phonetic = data.phonetic || ds.words[dsIdx].phonetic;
-          ds.words[dsIdx].translation = data.translation_compact || ds.words[dsIdx].translation;
+          ds.words[dsIdx].translation = trToUse || ds.words[dsIdx].translation;
           if (data.examples && data.examples.length) {
             ds.words[dsIdx].examples = data.examples;
           }
@@ -3418,7 +3457,7 @@ function updateWordGlobally(wordStr, data) {
         const bIdx = bDs.words.findIndex(x => x.word.toLowerCase() === targetLower);
         if (bIdx >= 0) {
           bDs.words[bIdx].phonetic = data.phonetic || bDs.words[bIdx].phonetic;
-          bDs.words[bIdx].translation = data.translation_compact || bDs.words[bIdx].translation;
+          bDs.words[bIdx].translation = trToUse || bDs.words[bIdx].translation;
           if (data.examples && data.examples.length) {
             bDs.words[bIdx].examples = data.examples;
           }
